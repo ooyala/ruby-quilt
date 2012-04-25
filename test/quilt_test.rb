@@ -7,17 +7,47 @@ require "./lib/quilt.rb"
 require "webrick"
 
 class QuiltTest < Scope::TestCase
+  context "class functions" do
+    context "new" do
+      should "throw an exception if no config hash is specified" do
+        error = nil
+        begin
+          Quilt.new(nil, nil)
+        rescue Exception => e
+          error = e
+        end
+        assert error
+      end
+
+      should "throw an exception if no local_path is specified" do
+        error = nil
+        begin
+          Quilt.new({}, nil)
+        rescue Exception => e
+          error = e
+        end
+        assert error
+      end
+
+      should "create a quilt" do
+        error = nil
+        begin
+          quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")}, nil)
+          assert quilt.is_a?(Quilt)
+        rescue Exception => e
+          error = e
+        end
+        assert_nil error
+      end
+    end
+  end
   context "instance functions" do
     setup_once do
       Thread.new do
-        access_log = [
-          [$stderr, WEBrick::AccessLog::COMMON_LOG_FORMAT],
-          [$stderr, WEBrick::AccessLog::REFERER_LOG_FORMAT],
-        ]
         s = WEBrick::HTTPServer.new(:Port => 1337,
                                     :DocumentRoot => File.join(File.dirname(__FILE__), "mock", "server"),
-                                    :Logger => Logger.new(STDOUT),
-                                    :AccessLog => access_log)
+                                    :Logger => nil,
+                                    :AccessLog => [])
         begin
           s.start
         ensure
@@ -32,7 +62,7 @@ class QuiltTest < Scope::TestCase
         :remote_host => "localhost",
         :remote_port => 1337,
         :remote_path => "/"
-      })
+      }, nil)
       @bad_remote_quilt = Quilt.new({
         :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
         :remote_host => "localhost",
