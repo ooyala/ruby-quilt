@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require File.join(File.dirname(__FILE__), "test_helper")
+require "./test/test_helper"
 require "net/http"
 require "./lib/quilt"
 require "webrick"
