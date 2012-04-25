@@ -2,6 +2,5 @@ source :rubygems
 
 gem "json"
 
-group :test do
-  gem "scope"
-end
+gem "scope", :require => false, :group => :test
+gem "simplecov", :require => false, :group => :test

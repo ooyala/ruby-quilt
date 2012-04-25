@@ -1,10 +1,24 @@
 #!/usr/bin/env ruby
 
-require "minitest/autorun"
-require "scope"
+require File.join(File.dirname(__FILE__), "test_helper")
 require "net/http"
-require "./lib/quilt.rb"
+require "./lib/quilt"
 require "webrick"
+
+class FakeLogger
+  def error(msg)
+    # do nothing
+  end
+  def error?
+    true
+  end
+  def debug(msg)
+    # do nothing
+  end
+  def debug?
+    true
+  end
+end
 
 class QuiltTest < Scope::TestCase
   context "class functions" do
@@ -12,7 +26,7 @@ class QuiltTest < Scope::TestCase
       should "throw an exception if no config hash is specified" do
         error = nil
         begin
-          Quilt.new(nil, nil)
+          Quilt.new(nil, FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -22,7 +36,7 @@ class QuiltTest < Scope::TestCase
       should "throw an exception if no local_path is specified" do
         error = nil
         begin
-          Quilt.new({}, nil)
+          Quilt.new({}, FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -32,7 +46,8 @@ class QuiltTest < Scope::TestCase
       should "create a quilt" do
         error = nil
         begin
-          quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")}, nil)
+          quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")},
+                            FakeLogger.new)
           assert quilt.is_a?(Quilt)
         rescue Exception => e
           error = e
@@ -62,14 +77,15 @@ class QuiltTest < Scope::TestCase
         :remote_host => "localhost",
         :remote_port => 1337,
         :remote_path => "/"
-      }, nil)
+      }, FakeLogger.new)
       @bad_remote_quilt = Quilt.new({
         :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
         :remote_host => "localhost",
         :remote_port => 1338,
         :remote_path => "/"
-      }, nil)
-      @no_remote_quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")}, nil)
+      }, FakeLogger.new)
+      @no_remote_quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")},
+                                   FakeLogger.new)
     end
 
     context "get_module_name" do
