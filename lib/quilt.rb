@@ -1,5 +1,6 @@
 require 'logger'
 require 'json'
+require 'net/http'
 
 class Quilt
   HEADER_KEY = "header"
@@ -11,14 +12,29 @@ class Quilt
     @config = config;
     @versions = {};
     @log = log
+
+    if (config[:local_path])
+      Dir.foreach(config[:local_path]) do |version_dir|
+        next if version_dir == "." || version_dir == ".."
+        @versions[version_dir] = load_version(config[:local_path], version_dir)
+      end
+    else
+      throw "Quilt: local path not specified";
+    end
   end
 
-  def logError(msg)
-    @log.error(msg) if @log && @log.error?
+  def log_error(msg, e = nil)
+    return unless @log && @log.error?
+    @log.error(msg) if msg
+    if (e)
+      @log.error(e.message)
+      @log.error(e.backtrace.inspect)
+    end
   end
 
-  def logDebug(msg)
-    @log.debug(msg) if @log && @log.debug?
+  def log_debug(msg)
+    return unless @log && @log.debug?
+    @log.debug(msg)
   end
 
   def get_module_name(filename)
@@ -36,16 +52,14 @@ class Quilt
     begin
       tmp_module[:module] = File.open(File.join(version_dir, filename), "rb").read
     rescue Exception => e
-      logError("  Could not load module: #{filename}")
-      logError(e.message)
-      logError(e.backtrace.inspect)
+      log_error("  Could not load module: #{filename}", e)
       return nil
     end
     tmp_module
   end
 
   def load_version(local_path, version_name)
-    logDebug("Loading Version: "+version_name)
+    log_debug("Loading Version: "+version_name)
     manifest = {}
     newVersion = {
       :name => version_name,
@@ -56,9 +70,7 @@ class Quilt
     begin
       manifest = JSON.parse(File.read(File.join(newVersion[:dir], "manifest.json")))
     rescue Exception => e
-      logError("  Could not read manifest!");
-      logError(e.message)
-      logError(e.backtrace.inspect)
+      log_error("  Could not read manifest!", e);
       return nil
     end
     #  manifest.json:
@@ -79,9 +91,7 @@ class Quilt
         newVersion[:base] = "#{newVersion[:base]}#{File.open(File.join(newVersion[:dir],
                                                                        manifest[HEADER_KEY]), "rb").read}"
       rescue Exception => e
-        logError("  Could not load header: #{manifest[HEADER_KEY]}")
-        logError(e.message)
-        logError(e.backtrace.inspect)
+        log_error("  Could not load header: #{manifest[HEADER_KEY]}", e)
       end
     end
     if manifest[COMMON_KEY] && manifest[COMMON_KEY].is_a?(Array)
@@ -90,9 +100,7 @@ class Quilt
           newVersion[:base] = "#{newVersion[:base]}#{File.open(File.join(newVersion[:dir],
                                                                          filename), "rb").read}"
         rescue Exception => e
-          logError("  Could not load common module: #{filename}")
-          logError(e.message)
-          logError(e.backtrace.inspect)
+          log_error("  Could not load common module: #{filename}", e)
         end
       end
     end
@@ -104,7 +112,7 @@ class Quilt
           if (tmp_module_name)
             newVersion[:modules][tmp_module_name] = tmp_module
           else
-            logError("  Could not extract module name from: #{filename}")
+            log_error("  Could not extract module name from: #{filename}")
           end
         end
       end
@@ -113,9 +121,7 @@ class Quilt
       begin
         newVersion[:footer] = File.open(File.join(newVersion[:dir], manifest[FOOTER_KEY]), "rb").read
       rescue Exception => e
-        logError("  Could not load footer: #{manifest[FOOTER_KEY]}")
-        logError(e.message)
-        logError(e.backtrace.inspect)
+        log_error("  Could not load footer: #{manifest[FOOTER_KEY]}", e)
         newVersion[FOOTER_KEY] = nil
       end
     end
@@ -129,12 +135,12 @@ class Quilt
     modules.each do |name|
       break if my_all_modules[name] == 2
       if (!version[:modules][name] || !version[:modules][name][:module])
-        logError("  invalid module: #{name}");
+        log_error("  invalid module: #{name}");
         my_all_modules[name] = 2
         break
       end
       if (my_all_modules[name] == 1)
-        logError("  circular module dependancy: #{name}")
+        log_error("  circular module dependancy: #{name}")
         break
       end
       my_all_modules[name] = 1
@@ -143,5 +149,42 @@ class Quilt
       my_all_modules[name] = 2
     end
     out
+  end
+
+  def get_version(name)
+    return @versions[name] if @versions[name]
+    if (!@config[:remote_host] || !@config[:remote_path])
+      log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
+      return nil
+    end
+    port = @config[:remote_port] ? @config[:remote_port].to_i : 80
+    # Fetch the version
+    filename = "#{name}.tgz"
+    begin
+      Net::HTTP.start(@config[:remote_host].to_s, port) do |http|
+        res = http.get("#{@config[:remote_path].to_s}#{name}.tgz")
+        if (res.code != "200")
+          log_error("no version fetched : "+res.code)
+          return nil
+        end
+        open(File.join(@config[:local_path], filename), "wb") do |file|
+          file.write(res.body)
+        end
+      end
+    rescue Exception => e
+      log_error("could not fetch version", e)
+      return nil
+    end
+    # Untar the version
+    tar_output = `cd #{@config[:local_path]} && tar -xzf #{filename} 2>&1`
+    if ($?.to_i != 0)
+      log_error("unable to untar package")
+      log_error(tar_output)
+      `cd #{@config[:local_path]} && rm #{filename}`
+      return nil
+    end
+    `cd #{@config[:local_path]} && rm #{filename}`
+    # Load the version
+    @versions[name] = load_version(@config[:local_path], name)
   end
 end

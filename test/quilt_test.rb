@@ -2,16 +2,48 @@
 
 require "minitest/autorun"
 require "scope"
+require "net/http"
 require "./lib/quilt.rb"
+require "webrick"
 
 class QuiltTest < Scope::TestCase
   context "instance functions" do
+    setup_once do
+      Thread.new do
+        access_log = [
+          [$stderr, WEBrick::AccessLog::COMMON_LOG_FORMAT],
+          [$stderr, WEBrick::AccessLog::REFERER_LOG_FORMAT],
+        ]
+        s = WEBrick::HTTPServer.new(:Port => 1337,
+                                    :DocumentRoot => File.join(File.dirname(__FILE__), "mock", "server"),
+                                    :Logger => Logger.new(STDOUT),
+                                    :AccessLog => access_log)
+        begin
+          s.start
+        ensure
+          s.shutdown
+        end
+      end
+    end
+
     setup do
-      @quilt = Quilt.new({})
+      @quilt = Quilt.new({
+        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
+        :remote_host => "localhost",
+        :remote_port => 1337,
+        :remote_path => "/"
+      })
+      @bad_remote_quilt = Quilt.new({
+        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
+        :remote_host => "localhost",
+        :remote_port => 1338,
+        :remote_path => "/"
+      }, nil)
+      @no_remote_quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")}, nil)
     end
 
     context "get_module_name" do
-      should "return null for bad file names" do
+      should "return nil for bad file names" do
         name = @quilt.get_module_name(nil)
         assert_nil name
         name = @quilt.get_module_name("")
@@ -59,7 +91,7 @@ class QuiltTest < Scope::TestCase
     end
 
     context "get_module" do
-      should "return null if the module does not exist" do
+      should "return nil if the module does not exist" do
         mod = @quilt.get_module("randomjunk", [], "morerandomjunk")
         assert_nil mod
       end
@@ -91,7 +123,7 @@ class QuiltTest < Scope::TestCase
     end
 
     context "load_version" do
-      should "return null if there is no manifest" do
+      should "return nil if there is no manifest" do
         version = @quilt.load_version(File.dirname(__FILE__) + "/mock", "good_project")
         assert_nil version
       end
@@ -180,6 +212,74 @@ class QuiltTest < Scope::TestCase
       should "gracefully handle non-existant modules" do
         out = @quilt.resolve_dependancies([ "5", "oogabooga" ], @version);
         assert_equal "6\n5\n", out
+      end
+    end
+
+    context "get_version" do
+      should "return nil for non-existant version when no remote information exists" do
+        version = @no_remote_quilt.get_version('2.0.0')
+        assert_nil version
+      end
+
+      should "return version if it exists" do
+        version = @no_remote_quilt.get_version('1.0.0')
+        assert version
+        assert_equal "h\nc\n", version[:base]
+        expected = {
+          "0" => { :dependancies => [ "8" ], :module => "0\n" },
+          "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
+          "2" => { :dependancies => [ "8" ], :module => "2\n" },
+          "3" => { :dependancies => [], :module => "3\n" },
+          "4" => { :dependancies => [], :module => "4\n" },
+          "5" => { :dependancies => [], :module => "5\n" },
+          "6" => { :dependancies => [], :module => "6\n" },
+          "7" => { :dependancies => [], :module => "7\n" },
+          "8" => { :dependancies => [], :module => "8\n" },
+          "9" => { :dependancies => [], :module => "9\n" }
+        }
+        assert_equal expected, version[:modules]
+        assert_equal "f1.0.0\n", version[:footer]
+      end
+
+      should "fetch remote version if it does not exist locally" do
+        version = @quilt.get_version('2.0.0')
+        assert version
+        assert_equal "h\nc\n", version[:base]
+        expected = {
+          "0" => { :dependancies => [ "8" ], :module => "0\n" },
+          "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
+          "2" => { :dependancies => [ "8" ], :module => "2\n" },
+          "3" => { :dependancies => [], :module => "3\n" },
+          "4" => { :dependancies => [], :module => "4\n" },
+          "5" => { :dependancies => [], :module => "5\n" },
+          "6" => { :dependancies => [], :module => "6\n" },
+          "7" => { :dependancies => [], :module => "7\n" },
+          "8" => { :dependancies => [], :module => "8\n" },
+          "9" => { :dependancies => [], :module => "9\n" }
+        }
+        assert_equal expected, version[:modules]
+        assert_equal "f2.0.0\n", version[:footer]
+        `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "2.0.0")}`
+      end
+
+      should "return nil if version doesn't exist locally or remote" do
+        version = @quilt.get_version('3.0.0')
+        assert_nil version
+      end
+
+      should "return nil if remote version file is empty" do
+        version = @quilt.get_version('empty')
+        assert_nil version
+      end
+
+      should "return nil if remote version file is not a gzipped tar" do
+        version = @quilt.get_version('bad')
+        assert_nil version
+      end
+
+      should "return nil if remote server doesn't exist" do
+        version = @bad_remote_quilt.get_version('2.0.0')
+        assert_nil version
       end
     end
   end
