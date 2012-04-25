@@ -263,23 +263,47 @@ class QuiltTest < Scope::TestCase
       end
 
       should "return nil if version doesn't exist locally or remote" do
-        version = @quilt.get_version('3.0.0')
-        assert_nil version
+        assert_nil @quilt.get_version('3.0.0')
       end
 
       should "return nil if remote version file is empty" do
-        version = @quilt.get_version('empty')
-        assert_nil version
+        assert_nil @quilt.get_version('empty')
       end
 
       should "return nil if remote version file is not a gzipped tar" do
-        version = @quilt.get_version('bad')
-        assert_nil version
+        assert_nil @quilt.get_version('bad')
       end
 
       should "return nil if remote server doesn't exist" do
-        version = @bad_remote_quilt.get_version('2.0.0')
-        assert_nil version
+        assert_nil @bad_remote_quilt.get_version('2.0.0')
+      end
+    end
+
+    context "stitch" do
+      should "return empty for a non-existant version when no remote information exists" do
+        assert_equal '', @no_remote_quilt.stitch(['0'], '2.0.0')
+      end
+
+      should "properly stitch for an existing version with selector array" do
+        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0'], '1.0.0')
+      end
+
+      should "properly stitch for an existing version with selector function" do
+        assert_equal "h\nc\n8\n0\n7\n9\n1\n2\n3\n4\n5\n6\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
+          true
+        end, '1.0.0')
+      end
+
+      should "properly stitch for remote version with selector array" do
+        assert_equal "h\nc\n8\n0\nf2.0.0\n", @quilt.stitch(['0'], '2.0.0')
+        `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "2.0.0")}`
+      end
+
+      should "properly stitch for remote version with selector function" do
+        assert_equal "h\nc\n8\n0\n7\n9\n1\n2\n3\n4\n5\n6\nf2.0.0\n", @quilt.stitch(Proc.new do |m|
+          true
+        end, '2.0.0')
+        `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "2.0.0")}`
       end
     end
   end

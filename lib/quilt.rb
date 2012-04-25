@@ -164,7 +164,7 @@ class Quilt
       Net::HTTP.start(@config[:remote_host].to_s, port) do |http|
         res = http.get("#{@config[:remote_path].to_s}#{name}.tgz")
         if (res.code != "200")
-          log_error("no version fetched : "+res.code)
+          log_error("no version fetched : #{res.code}")
           return nil
         end
         open(File.join(@config[:local_path], filename), "wb") do |file|
@@ -186,5 +186,29 @@ class Quilt
     `cd #{@config[:local_path]} && rm #{filename}`
     # Load the version
     @versions[name] = load_version(@config[:local_path], name)
+  end
+
+  def stitch(selector, version_name)
+    return '' if !selector
+    version = get_version(version_name)
+    if (!version)
+      log_error("could not fetch version: #{version_name}")
+      return ''
+    end
+
+    # get modules we want to use
+    modules = []
+    if (selector.is_a?(Proc))
+      modules = version[:modules].keys.select do |mod|
+        selector.call(mod)
+      end
+    elsif (selector.is_a?(Array))
+      modules = selector
+    end
+
+    # resolve dependancies
+    output = "#{version[:base]}#{resolve_dependancies(modules, version, {})}#{version[:footer] ?
+                                                                              version[:footer] :
+                                                                              ''}"
   end
 end
