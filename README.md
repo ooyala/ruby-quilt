@@ -65,4 +65,4 @@ Circular dependancies will be shortcircuited and an error message will be sent t
 
     http://remote_host:remote_portremote_path/<version name>.tgz
 
-Note that `remote_path` must contain the leading slash and the version archive should be a gzipped tarball. The archive should contain the same directory structure as specified in the `local_path` section.
+Note that `remote_path` must contain the leading slash and the version archive should be a gzipped tarball. The archive should contain the same directory structure as specified in the `local_path` section (without the base `<version name>` directory).

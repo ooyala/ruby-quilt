@@ -1,6 +1,8 @@
 require 'logger'
 require 'json'
 require 'net/http'
+require 'popen4'
+require 'fileutils'
 
 class Quilt
   HEADER_KEY = "header"
@@ -184,6 +186,7 @@ class Quilt
     port = @config[:remote_port] ? @config[:remote_port].to_i : 80
     # Fetch the version
     filename = "#{name}.tgz"
+    version_dir = File.join(@config[:local_path], name)
     begin
       Net::HTTP.start(@config[:remote_host].to_s, port) do |http|
         res = http.get(File.join(@config[:remote_path].to_s, "#{name}.tgz"))
@@ -191,7 +194,8 @@ class Quilt
           log_error("no version fetched : #{res.code}")
           return nil
         end
-        open(File.join(@config[:local_path], filename), "wb") do |file|
+        FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
+        open(File.join(version_dir, filename), "wb") do |file|
           file.write(res.body)
         end
       end
@@ -200,16 +204,36 @@ class Quilt
       return nil
     end
     # Untar the version
-    tar_output = `cd #{@config[:local_path]} && tar -xzf #{filename} 2>&1`
-    if ($?.to_i != 0)
-      log_error("unable to untar package")
-      log_error(tar_output)
-      `cd #{@config[:local_path]} && rm #{filename}`
+    tar_stdout = nil
+    tar_stderr = nil
+    tar_status =
+      POpen4::popen4("cd #{version_dir} && tar -xzf #{filename} && rm #{filename}") do |stdo, stde, stdi, pid|
+      stdi.close
+      tar_stdout = stdo.read.strip
+      tar_stderr = stde.read.strip
+    end
+    if (!tar_status.exitstatus.zero?)
+      log_error("unable to untar package: cd #{version_dir} && tar -xzf #{filename} && rm #{filename}")
+      log_error("stdout: #{tar_stdout}")
+      log_error("stderr: #{tar_stderr}")
+      begin
+        FileUtils.rm_r(version_dir)
+      rescue Exception => e
+        # do nothing
+      end
       return nil
     end
-    `cd #{@config[:local_path]} && rm #{filename}`
     # Load the version
     @versions[name] = load_version(@config[:local_path], name)
+    if (!@versions[name])
+      begin
+        FileUtils.rm_r(version_dir)
+      rescue Exception => e
+        # do nothing
+      end
+      return nil
+    end
+    @versions[name]
   end
 
   def stitch(selector, version_name, prefix = :default)
