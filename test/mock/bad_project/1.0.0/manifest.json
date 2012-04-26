@@ -17,6 +17,6 @@
     "./8.js": [],
     "./9.js": [],
     "./optional.js": [],
-    "./badname.json": []
+    "./badname": []
   }
 }

@@ -106,18 +106,6 @@ class QuiltTest < Scope::TestCase
         assert_nil name
         name = @quilt.get_module_name("./hello/hello")
         assert_nil name
-        name = @quilt.get_module_name("hello.json")
-        assert_nil name
-        name = @quilt.get_module_name("/hello.json")
-        assert_nil name
-        name = @quilt.get_module_name("./hello.json")
-        assert_nil name
-        name = @quilt.get_module_name("hello/hello.json")
-        assert_nil name
-        name = @quilt.get_module_name("/hello/hello.json")
-        assert_nil name
-        name = @quilt.get_module_name("./hello/hello.json")
-        assert_nil name
       end
 
       should "return a valid name for good file names" do
@@ -177,7 +165,7 @@ class QuiltTest < Scope::TestCase
       should "return a version" do
         version = @quilt.load_version(File.dirname(__FILE__) + "/mock/good_project", "1.0.0")
         assert version
-        assert_equal "h\nc\n", version[:base]
+        assert_equal "h\nc\n", version[:default][:base]
         expected = {
           "0" => { :dependancies => [ "8" ], :module => "0\n" },
           "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
@@ -190,14 +178,14 @@ class QuiltTest < Scope::TestCase
           "8" => { :dependancies => [], :module => "8\n" },
           "9" => { :dependancies => [], :module => "9\n" }
         }
-        assert_equal expected, version[:modules]
-        assert_equal version[:footer], "f1.0.0\n"
+        assert_equal expected, version[:default][:optional]
+        assert_equal version[:default][:footer], "f1.0.0\n"
       end
 
       should "gracefully handle bad manifest entries" do
         version = @quilt.load_version(File.dirname(__FILE__) + "/mock/bad_project", "1.0.0")
         assert version
-        assert_equal "c\n", version[:base]
+        assert_equal "c\n", version[:default][:base]
         expected = {
           "0" => { :dependancies => [ "8" ], :module => "0\n" },
           "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
@@ -210,53 +198,55 @@ class QuiltTest < Scope::TestCase
           "8" => { :dependancies => [], :module => "8\n" },
           "9" => { :dependancies => [], :module => "9\n" }
         }
-        assert_equal expected, version[:modules]
-        assert_nil version[:footer]
+        assert_equal expected, version[:default][:optional]
+        assert_nil version[:default][:footer]
       end
     end
 
     context "resolve_dependancies" do
       setup do
         @version = {
-          :base => "h\nc\n",
-          :modules => {
-            "0" => { :dependancies => [ "8" ], :module => "0\n" },
-            "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
-            "2" => { :dependancies => [ "8" ], :module => "2\n" },
-            "3" => { :dependancies => [], :module => "3\n" },
-            "4" => { :dependancies => [], :module => "4\n" },
-            "5" => { :dependancies => [ "6" ], :module => "5\n" },
-            "6" => { :dependancies => [ "5" ], :module => "6\n" },
-            "7" => { :dependancies => [], :module => "7\n" },
-            "8" => { :dependancies => [ "9" ], :module => "8\n" },
-            "9" => { :dependancies => [], :module => "9\n" }
+          :default => {
+            :base => "h\nc\n",
+            :optional => {
+              "0" => { :dependancies => [ "8" ], :module => "0\n" },
+              "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
+              "2" => { :dependancies => [ "8" ], :module => "2\n" },
+              "3" => { :dependancies => [], :module => "3\n" },
+              "4" => { :dependancies => [], :module => "4\n" },
+              "5" => { :dependancies => [ "6" ], :module => "5\n" },
+              "6" => { :dependancies => [ "5" ], :module => "6\n" },
+              "7" => { :dependancies => [], :module => "7\n" },
+              "8" => { :dependancies => [ "9" ], :module => "8\n" },
+              "9" => { :dependancies => [], :module => "9\n" }
+            }
           }
         }
       end
 
       should "return an empty string for no modules" do
-        out = @quilt.resolve_dependancies(nil, @version);
+        out = @quilt.resolve_dependancies(nil, @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies([], @version);
+        out = @quilt.resolve_dependancies([], @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies({ "yo" => "sup" }, @version);
+        out = @quilt.resolve_dependancies({ "yo" => "sup" }, @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies("hi", @version);
+        out = @quilt.resolve_dependancies("hi", @version[:default]);
         assert_equal '', out
       end
 
       should "resolve dependancies" do
-        out = @quilt.resolve_dependancies([ "0", "1", "2" ], @version);
+        out = @quilt.resolve_dependancies([ "0", "1", "2" ], @version[:default]);
         assert_equal "9\n8\n0\n7\n1\n2\n", out
       end
 
       should "gracefully handle circular dependancies" do
-        out = @quilt.resolve_dependancies([ "5" ], @version);
+        out = @quilt.resolve_dependancies([ "5" ], @version[:default]);
         assert_equal "6\n5\n", out
       end
 
       should "gracefully handle non-existant modules" do
-        out = @quilt.resolve_dependancies([ "5", "oogabooga" ], @version);
+        out = @quilt.resolve_dependancies([ "5", "oogabooga" ], @version[:default]);
         assert_equal "6\n5\n", out
       end
     end
@@ -270,7 +260,7 @@ class QuiltTest < Scope::TestCase
       should "return version if it exists" do
         version = @no_remote_quilt.get_version('1.0.0')
         assert version
-        assert_equal "h\nc\n", version[:base]
+        assert_equal "h\nc\n", version[:default][:base]
         expected = {
           "0" => { :dependancies => [ "8" ], :module => "0\n" },
           "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
@@ -283,14 +273,14 @@ class QuiltTest < Scope::TestCase
           "8" => { :dependancies => [], :module => "8\n" },
           "9" => { :dependancies => [], :module => "9\n" }
         }
-        assert_equal expected, version[:modules]
-        assert_equal "f1.0.0\n", version[:footer]
+        assert_equal expected, version[:default][:optional]
+        assert_equal "f1.0.0\n", version[:default][:footer]
       end
 
       should "fetch remote version if it does not exist locally" do
         version = @quilt.get_version('2.0.0')
         assert version
-        assert_equal "h\nc\n", version[:base]
+        assert_equal "h\nc\n", version[:default][:base]
         expected = {
           "0" => { :dependancies => [ "8" ], :module => "0\n" },
           "1" => { :dependancies => [ "7", "9" ], :module => "1\n" },
@@ -303,8 +293,8 @@ class QuiltTest < Scope::TestCase
           "8" => { :dependancies => [], :module => "8\n" },
           "9" => { :dependancies => [], :module => "9\n" }
         }
-        assert_equal expected, version[:modules]
-        assert_equal "f2.0.0\n", version[:footer]
+        assert_equal expected, version[:default][:optional]
+        assert_equal "f2.0.0\n", version[:default][:footer]
         `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "2.0.0")}`
       end
 
@@ -350,6 +340,11 @@ class QuiltTest < Scope::TestCase
           true
         end, '2.0.0')
         `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "2.0.0")}`
+      end
+
+      should "properly stitch for debug version" do
+        assert_equal "h\nc\n8\n0\nf1.0.0-debug\n", @quilt.stitch(['0'], 'hasdebug', :debug)
+        `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "hasdebug")}`
       end
     end
   end

@@ -7,6 +7,8 @@ class Quilt
   COMMON_KEY = "common"
   OPTIONAL_KEY = "optional"
   FOOTER_KEY = "footer"
+  PREFIX_KEY = "prefix"
+  DEBUG_PREFIX_KEY = "debug_prefix"
 
   def initialize(config, log = Logger.new(STDOUT))
     @config = config;
@@ -39,7 +41,7 @@ class Quilt
 
   def get_module_name(filename)
     return nil unless filename
-    matches = filename.match(/(^.*\/|^)(.*)\.js$/)
+    matches = filename.match(/(^.*\/|^)(.+)\.[^.]+$/)
     return nil unless matches && matches.length >= 3
     matches[2]
   end
@@ -61,20 +63,35 @@ class Quilt
   def load_version(local_path, version_name)
     log_debug("Loading Version: "+version_name)
     manifest = {}
-    newVersion = {
+    new_version = {
       :name => version_name,
       :dir => File.join(local_path, version_name),
-      :base => '',
-      :modules => {}
+      :default => {
+        :base => '',
+        :optional => {},
+      }
     }
     begin
-      manifest = JSON.parse(File.read(File.join(newVersion[:dir], "manifest.json")))
+      manifest = JSON.parse(File.read(File.join(new_version[:dir], "manifest.json")))
+      new_version[:default][:dir] =
+        manifest[PREFIX_KEY] ? File.join(new_version[:dir], manifest[PREFIX_KEY]) :
+                               new_version[:dir]
+      if (manifest[DEBUG_PREFIX_KEY])
+        new_version[:debug] = {
+          :dir => manifest[DEBUG_PREFIX_KEY] ?  File.join(new_version[:dir], manifest[DEBUG_PREFIX_KEY]) :
+                                                new_version[:dir],
+          :base => '',
+          :optional => {}
+        }
+      end
     rescue Exception => e
       log_error("  Could not read manifest!", e);
       return nil
     end
     #  manifest.json:
     #  {
+    #    "prefix" : "<prefix directory>"
+    #    "debug_prefix : "<debug prefix directory"
     #    "header" : "<header file>",
     #    "footer" : "<footer file>",
     #    "common" : [
@@ -86,46 +103,53 @@ class Quilt
     #      ...
     #    }
     #  }
-    if manifest[HEADER_KEY]
-      begin
-        newVersion[:base] = "#{newVersion[:base]}#{File.open(File.join(newVersion[:dir],
-                                                                       manifest[HEADER_KEY]), "rb").read}"
-      rescue Exception => e
-        log_error("  Could not load header: #{manifest[HEADER_KEY]}", e)
-      end
-    end
-    if manifest[COMMON_KEY] && manifest[COMMON_KEY].is_a?(Array)
-      manifest[COMMON_KEY].each do |filename|
+    module_loader = Proc.new do |prefix|
+      dir = new_version[prefix][:dir]
+      if manifest[HEADER_KEY]
         begin
-          newVersion[:base] = "#{newVersion[:base]}#{File.open(File.join(newVersion[:dir],
-                                                                         filename), "rb").read}"
+          new_version[prefix][:base] =
+            "#{new_version[prefix][:base]}#{File.open(File.join(dir, manifest[HEADER_KEY]), "rb").read}"
         rescue Exception => e
-          log_error("  Could not load common module: #{filename}", e)
+          log_error("  Could not load #{prefix.to_s} header: #{manifest[HEADER_KEY]}", e)
         end
       end
-    end
-    if manifest[OPTIONAL_KEY] && manifest[OPTIONAL_KEY].is_a?(Hash)
-      manifest[OPTIONAL_KEY].each do |filename, dependancies|
-        tmp_module = get_module(filename, dependancies, newVersion[:dir])
-        if (tmp_module)
-          tmp_module_name = get_module_name(filename)
-          if (tmp_module_name)
-            newVersion[:modules][tmp_module_name] = tmp_module
-          else
-            log_error("  Could not extract module name from: #{filename}")
+      if manifest[COMMON_KEY] && manifest[COMMON_KEY].is_a?(Array)
+        manifest[COMMON_KEY].each do |filename|
+          begin
+            new_version[prefix][:base] =
+              "#{new_version[prefix][:base]}#{File.open(File.join(dir, filename), "rb").read}"
+          rescue Exception => e
+            log_error("  Could not load #{prefix.to_s} common module: #{filename}", e)
           end
         end
       end
-    end
-    if manifest[FOOTER_KEY]
-      begin
-        newVersion[:footer] = File.open(File.join(newVersion[:dir], manifest[FOOTER_KEY]), "rb").read
-      rescue Exception => e
-        log_error("  Could not load footer: #{manifest[FOOTER_KEY]}", e)
-        newVersion[FOOTER_KEY] = nil
+      if manifest[OPTIONAL_KEY] && manifest[OPTIONAL_KEY].is_a?(Hash)
+        manifest[OPTIONAL_KEY].each do |filename, dependancies|
+          tmp_module = get_module(filename, dependancies, dir)
+          if (tmp_module)
+            tmp_module_name = get_module_name(filename)
+            if (tmp_module_name)
+              new_version[prefix][:optional][tmp_module_name] = tmp_module
+            else
+              log_error("  Could not extract #{prefix.to_s} module name from: #{filename}")
+            end
+          end
+        end
+      end
+      if manifest[FOOTER_KEY]
+        begin
+          new_version[prefix][:footer] = File.open(File.join(dir, manifest[FOOTER_KEY]), "rb").read
+        rescue Exception => e
+          log_error("  Could not load #{prefix.to_s} footer: #{manifest[FOOTER_KEY]}", e)
+          new_version[:footer] = nil
+        end
       end
     end
-    newVersion
+
+    module_loader.call(:default)
+    module_loader.call(:debug) if new_version[:debug]
+
+    new_version
   end
 
   def resolve_dependancies(modules, version, all_modules = {})
@@ -134,7 +158,7 @@ class Quilt
     my_all_modules = all_modules
     modules.each do |name|
       break if my_all_modules[name] == 2
-      if (!version[:modules][name] || !version[:modules][name][:module])
+      if (!version[:optional][name] || !version[:optional][name][:module])
         log_error("  invalid module: #{name}");
         my_all_modules[name] = 2
         break
@@ -144,8 +168,8 @@ class Quilt
         break
       end
       my_all_modules[name] = 1
-      out = "#{out}#{resolve_dependancies(version[:modules][name][:dependancies], version, my_all_modules)}"
-      out = "#{out}#{version[:modules][name][:module]}"
+      out = "#{out}#{resolve_dependancies(version[:optional][name][:dependancies], version, my_all_modules)}"
+      out = "#{out}#{version[:optional][name][:module]}"
       my_all_modules[name] = 2
     end
     out
@@ -188,7 +212,7 @@ class Quilt
     @versions[name] = load_version(@config[:local_path], name)
   end
 
-  def stitch(selector, version_name)
+  def stitch(selector, version_name, prefix = :default)
     return '' if !selector
     version = get_version(version_name)
     if (!version)
@@ -199,7 +223,7 @@ class Quilt
     # get modules we want to use
     modules = []
     if (selector.is_a?(Proc))
-      modules = version[:modules].keys.select do |mod|
+      modules = version[prefix][:optional].keys.select do |mod|
         selector.call(mod)
       end
     elsif (selector.is_a?(Array))
@@ -207,8 +231,10 @@ class Quilt
     end
 
     # resolve dependancies
-    output = "#{version[:base]}#{resolve_dependancies(modules, version, {})}#{version[:footer] ?
-                                                                              version[:footer] :
-                                                                              ''}"
+    output = "#{version[prefix][:base]}#{resolve_dependancies(modules,
+                                                              version[prefix],
+                                                              {})}#{version[prefix][:footer] ?
+                                                                      version[prefix][:footer] :
+                                                                      ''}"
   end
 end
