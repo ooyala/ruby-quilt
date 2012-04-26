@@ -7,4 +7,10 @@ Gem::Specification.new do |s|
   s.email       = 'x-device-team@ooyala.com'
   s.files       = ["lib/quilt.rb"]
   s.homepage    = 'http://github.com/ooyala/ruby-quilt'
+  s.add_runtime_dependency 'json', '~> 1.6', '>= 1.6.6'
+  s.add_development_dependency 'rake', '~> 0.8', '>= 0.8.7'
+  s.add_development_dependency 'scope', '~> 0.2', '>= 0.2.3'
+  s.add_development_dependency 'simplecov', '~> 0.5', '>= 0.5.3'
+  s.required_ruby_version = '>= 1.9.2'
+  s.license = 'MIT'
 end
