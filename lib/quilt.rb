@@ -219,11 +219,12 @@ class Quilt
       log_error("could not fetch version: #{version_name}")
       return ''
     end
+    outversion = version[prefix] || version[:default]
 
     # get modules we want to use
     modules = []
     if (selector.is_a?(Proc))
-      modules = version[prefix][:optional].keys.select do |mod|
+      modules = outversion[:optional].keys.select do |mod|
         selector.call(mod)
       end
     elsif (selector.is_a?(Array))
@@ -231,10 +232,8 @@ class Quilt
     end
 
     # resolve dependancies
-    output = "#{version[prefix][:base]}#{resolve_dependancies(modules,
-                                                              version[prefix],
-                                                              {})}#{version[prefix][:footer] ?
-                                                                      version[prefix][:footer] :
-                                                                      ''}"
+    output = "#{outversion[:base]}#{resolve_dependancies(modules, outversion, {})}#{outversion[:footer] ?
+                                                                                    outversion[:footer] :
+                                                                                    ''}"
   end
 end

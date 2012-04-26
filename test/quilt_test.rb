@@ -346,6 +346,10 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\nc\n8\n0\nf1.0.0-debug\n", @quilt.stitch(['0'], 'hasdebug', :debug)
         `rm -rf #{File.join(File.dirname(__FILE__), "mock", "good_project", "hasdebug")}`
       end
+
+      should "fallback to non-debug if debug does not exist" do
+        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0'], '1.0.0', :debug)
+      end
     end
   end
 end
