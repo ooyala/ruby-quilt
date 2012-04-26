@@ -14,10 +14,10 @@ Ruby Quilt is a simple way to stitch files together. [Ruby Quilt on github](http
       :remote_host => "<remote host for fetching versions>", // Optional
       :remote_port => "<remote port for fetching versions>", // Optional
       :remote_path => "<base remote path for fetching versions>", // Optional
-    };
+    }
     quilt = Quilt.new(config)
-    // selector = array of module names or selector proc that takes a module name and returns true or
-    //            false depending on whether or not to include the module
+    # selector = array of module names or selector proc that takes a module name and returns true or
+    #            false depending on whether or not to include the module
     quilt.stitch(selector, "<version number>");
 
 ## Path Structure ##
