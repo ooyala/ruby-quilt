@@ -43,7 +43,7 @@ class Quilt
 
   def get_module_name(filename)
     return nil unless filename
-    matches = filename.match(/(^.*\/|^)(.+)\.[^.]+$/)
+    matches = filename.match(/(^.*\/|^)([^\/]+)$/)
     return nil unless matches && matches.length >= 3
     matches[2]
   end
@@ -127,14 +127,14 @@ class Quilt
       end
       if manifest[OPTIONAL_KEY] && manifest[OPTIONAL_KEY].is_a?(Hash)
         manifest[OPTIONAL_KEY].each do |filename, dependancies|
-          tmp_module = get_module(filename, dependancies, dir)
-          if (tmp_module)
-            tmp_module_name = get_module_name(filename)
-            if (tmp_module_name)
+          tmp_module_name = get_module_name(filename)
+          if (tmp_module_name)
+            tmp_module = get_module(filename, dependancies, dir)
+            if (tmp_module)
               new_version[prefix][:optional][tmp_module_name] = tmp_module
-            else
-              log_error("  Could not extract #{prefix.to_s} module name from: #{filename}")
             end
+          else
+            log_error("  Could not extract #{prefix.to_s} module name from: #{filename}")
           end
         end
       end

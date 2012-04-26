@@ -44,7 +44,7 @@ Ruby Quilt is a simple way to stitch files together. [Ruby Quilt on github](http
       }
     }
 
-Where each `<module file>` will point to a module to stitch. The filename should be `<module name>.js`
+Where each `<module file>` will point to a module to stitch. The filename should be `<module name>`
 
 The modules will be stitched in the following order:
 
