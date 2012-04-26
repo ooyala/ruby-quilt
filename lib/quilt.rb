@@ -162,7 +162,7 @@ class Quilt
     filename = "#{name}.tgz"
     begin
       Net::HTTP.start(@config[:remote_host].to_s, port) do |http|
-        res = http.get("#{@config[:remote_path].to_s}#{name}.tgz")
+        res = http.get(File.join(@config[:remote_path].to_s, "#{name}.tgz"))
         if (res.code != "200")
           log_error("no version fetched : #{res.code}")
           return nil
