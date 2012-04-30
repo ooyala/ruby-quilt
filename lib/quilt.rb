@@ -32,7 +32,7 @@ class Quilt
     @log.error(msg) if msg
     if (e)
       @log.error(e.message)
-      @log.error(e.backtrace.inspect)
+      @log.error(e.backtrace.join("\n"))
     end
   end
 
