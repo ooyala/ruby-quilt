@@ -355,22 +355,30 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug)
       end
     end
-    context "healthy?" do
+
+    context "health" do
       should "return false for bad config" do
-        healthy, problem = @bad_remote_quilt.healthy?
+        healthy, problem = @bad_remote_quilt.health
         assert !healthy
-        healthy, problem = @bad_remote_path_quilt.healthy?
+        healthy, problem = @bad_remote_path_quilt.health
         assert !healthy
       end
 
       should "return true for no remote config" do
-        healthy, problem = @no_remote_quilt.healthy?
+        healthy, problem = @no_remote_quilt.health
         assert healthy
       end
 
       should "return true for good config" do
-        healthy, problem = @quilt.healthy?
+        healthy, problem = @quilt.health
         assert healthy
+      end
+    end
+
+    context "status" do
+      should "return status" do
+        status = @quilt.status
+        assert status
       end
     end
   end

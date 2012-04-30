@@ -11,6 +11,7 @@ class Quilt
   FOOTER_KEY = "footer"
   PREFIX_KEY = "prefix"
   DEBUG_PREFIX_KEY = "debug_prefix"
+  ARCHIVE_SUFFIX = ".tgz"
 
   def initialize(config, log = Logger.new(STDOUT))
     @config = config;
@@ -185,11 +186,11 @@ class Quilt
     end
     port = @config[:remote_port] ? @config[:remote_port].to_i : 80
     # Fetch the version
-    filename = "#{name}.tgz"
+    filename = "#{name}#{ARCHIVE_SUFFIX}"
     version_dir = File.join(@config[:local_path], name)
     begin
       res = Net::HTTP.get_response(@config[:remote_host].to_s,
-                                   File.join(@config[:remote_path].to_s, "#{name}.tgz"), port)
+                                   File.join(@config[:remote_path].to_s, filename), port)
       if (res.code != "200")
         log_error("no version fetched : #{res.code}")
         return nil
@@ -260,7 +261,7 @@ class Quilt
                                                                                     ''}"
   end
 
-  def healthy?
+  def health
     # return true if no remote info
     return [true, nil] if !@config[:remote_host] || !@config[:remote_path]
     # fetch health_check.txt from remote URL
@@ -276,5 +277,22 @@ class Quilt
       return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - #{e.message}"]
     end
     [true, nil]
+  end
+
+  def status
+    remote_url = "Remote URL: none"
+    if (@config[:remote_host] && @config[:remote_path])
+      host = @config[:remote_host].to_s
+      port = @config[:remote_port] ? @config[:remote_port].to_i : 80
+      path = File.join(@config[:remote_path].to_s, "<version>#{ARCHIVE_SUFFIX}")
+      remote_url = "Remote URL: http://#{host}:#{port}#{path}"
+    end
+    body = <<EOS
+-- Quilt Status --
+#{remote_url}
+Locally Available Versions:
+  #{@versions.keys.join("\n  ")}
+EOS
+    body
   end
 end
