@@ -69,6 +69,7 @@ class QuiltTest < Scope::TestCase
           s.shutdown
         end
       end
+      sleep(5) # wait for the server to start up
     end
 
     setup do
