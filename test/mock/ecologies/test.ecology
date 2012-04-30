@@ -1,0 +1,8 @@
+{
+  "quilt": {
+    "local_path": "./test/mock/good_project",
+    "remote_host": "localhost",
+    "remote_port": 1337,
+    "remote_path": "/"
+  }
+}

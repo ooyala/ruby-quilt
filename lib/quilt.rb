@@ -3,6 +3,7 @@ require 'json'
 require 'net/http'
 require 'popen4'
 require 'fileutils'
+require 'ecology'
 
 class Quilt
   HEADER_KEY = "header"
@@ -13,15 +14,20 @@ class Quilt
   DEBUG_PREFIX_KEY = "debug_prefix"
   ARCHIVE_SUFFIX = ".tgz"
 
-  def initialize(config, log = Logger.new(STDOUT))
-    @config = config;
+  def initialize(config = "quilt", log = Logger.new(STDOUT))
+    @config = {
+      :local_path => Ecology.property("#{config ? "#{config}:" : ""}local_path"),
+      :remote_host => Ecology.property("#{config ? "#{config}:" : ""}remote_host"),
+      :remote_path => Ecology.property("#{config ? "#{config}:" : ""}remote_path"),
+      :remote_port => Ecology.property("#{config ? "#{config}:" : ""}remote_port")
+    };
     @versions = {};
     @log = log
 
-    if (config[:local_path])
-      Dir.foreach(config[:local_path]) do |version_dir|
+    if (@config[:local_path])
+      Dir.foreach(@config[:local_path]) do |version_dir|
         next if version_dir == "." || version_dir == ".."
-        @versions[version_dir] = load_version(config[:local_path], version_dir)
+        @versions[version_dir] = load_version(@config[:local_path], version_dir)
       end
     else
       throw "Quilt: local path not specified";

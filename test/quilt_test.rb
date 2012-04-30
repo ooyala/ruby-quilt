@@ -4,6 +4,7 @@ require "./test/test_helper"
 require "net/http"
 require "./lib/quilt"
 require "webrick"
+require "ecology"
 
 class FakeLogger
   def error(msg)
@@ -20,13 +21,19 @@ class FakeLogger
   end
 end
 
+BAD_ECOLOGY="./test/mock/ecologies/bad.ecology"
+NO_REMOTE_ECOLOGY="./test/mock/ecologies/noremote.ecology"
+BAD_REMOTE_ECOLOGY="./test/mock/ecologies/badremote.ecology"
+BAD_REMOTE_PATH_ECOLOGY="./test/mock/ecologies/badremotepath.ecology"
+TEST_ECOLOGY="./test/mock/ecologies/test.ecology"
+
 class QuiltTest < Scope::TestCase
   context "class functions" do
     context "new" do
-      should "throw an exception if no config hash is specified" do
+      should "throw an exception if Ecology is not initialized" do
         error = nil
         begin
-          Quilt.new(nil, FakeLogger.new)
+          Quilt.new("quilt", FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -34,9 +41,11 @@ class QuiltTest < Scope::TestCase
       end
 
       should "throw an exception if no local_path is specified" do
+        Ecology.reset
+        Ecology.read(BAD_ECOLOGY)
         error = nil
         begin
-          Quilt.new({}, FakeLogger.new)
+          Quilt.new("quilt", FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -44,10 +53,11 @@ class QuiltTest < Scope::TestCase
       end
 
       should "create a quilt" do
+        Ecology.reset
+        Ecology.read(TEST_ECOLOGY)
         error = nil
         begin
-          quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")},
-                            FakeLogger.new)
+          quilt = Quilt.new("quilt", FakeLogger.new)
           assert quilt.is_a?(Quilt)
         rescue Exception => e
           error = e
@@ -73,26 +83,18 @@ class QuiltTest < Scope::TestCase
     end
 
     setup do
-      @quilt = Quilt.new({
-        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
-        :remote_host => "localhost",
-        :remote_port => 1337,
-        :remote_path => "/"
-      }, FakeLogger.new)
-      @bad_remote_path_quilt = Quilt.new({
-        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
-        :remote_host => "localhost",
-        :remote_port => 1337,
-        :remote_path => "/nonexistant/"
-      }, FakeLogger.new)
-      @bad_remote_quilt = Quilt.new({
-        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
-        :remote_host => "localhost",
-        :remote_port => 1338,
-        :remote_path => "/"
-      }, FakeLogger.new)
-      @no_remote_quilt = Quilt.new({:local_path => File.join(File.dirname(__FILE__), "mock", "good_project")},
-                                   FakeLogger.new)
+      Ecology.reset
+      Ecology.read(TEST_ECOLOGY)
+      @quilt = Quilt.new("quilt", FakeLogger.new)
+      Ecology.reset
+      Ecology.read(BAD_REMOTE_PATH_ECOLOGY)
+      @bad_remote_path_quilt = Quilt.new("quilt", FakeLogger.new)
+      Ecology.reset
+      Ecology.read(BAD_REMOTE_ECOLOGY)
+      @bad_remote_quilt = Quilt.new("quilt", FakeLogger.new)
+      Ecology.reset
+      Ecology.read(NO_REMOTE_ECOLOGY)
+      @no_remote_quilt = Quilt.new("quilt", FakeLogger.new)
     end
 
     context "get_module_name" do

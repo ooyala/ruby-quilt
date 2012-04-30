@@ -1,0 +1,5 @@
+{
+  "quilt": {
+    "local_path": "./test/mock/good_project"
+  }
+}
