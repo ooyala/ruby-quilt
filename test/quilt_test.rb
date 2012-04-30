@@ -78,6 +78,12 @@ class QuiltTest < Scope::TestCase
         :remote_port => 1337,
         :remote_path => "/"
       }, FakeLogger.new)
+      @bad_remote_path_quilt = Quilt.new({
+        :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
+        :remote_host => "localhost",
+        :remote_port => 1337,
+        :remote_path => "/nonexistant/"
+      }, FakeLogger.new)
       @bad_remote_quilt = Quilt.new({
         :local_path => File.join(File.dirname(__FILE__), "mock", "good_project"),
         :remote_host => "localhost",
@@ -346,6 +352,24 @@ class QuiltTest < Scope::TestCase
 
       should "fallback to non-debug if debug does not exist" do
         assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug)
+      end
+    end
+    context "healthy?" do
+      should "return false for bad config" do
+        healthy, problem = @bad_remote_quilt.healthy?
+        assert !healthy
+        healthy, problem = @bad_remote_path_quilt.healthy?
+        assert !healthy
+      end
+
+      should "return true for no remote config" do
+        healthy, problem = @no_remote_quilt.healthy?
+        assert healthy
+      end
+
+      should "return true for good config" do
+        healthy, problem = @quilt.healthy?
+        assert healthy
       end
     end
   end

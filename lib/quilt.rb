@@ -188,16 +188,15 @@ class Quilt
     filename = "#{name}.tgz"
     version_dir = File.join(@config[:local_path], name)
     begin
-      Net::HTTP.start(@config[:remote_host].to_s, port) do |http|
-        res = http.get(File.join(@config[:remote_path].to_s, "#{name}.tgz"))
-        if (res.code != "200")
-          log_error("no version fetched : #{res.code}")
-          return nil
-        end
-        FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
-        open(File.join(version_dir, filename), "wb") do |file|
-          file.write(res.body)
-        end
+      res = Net::HTTP.get_response(@config[:remote_host].to_s,
+                                   File.join(@config[:remote_path].to_s, "#{name}.tgz"), port)
+      if (res.code != "200")
+        log_error("no version fetched : #{res.code}")
+        return nil
+      end
+      FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
+      open(File.join(version_dir, filename), "wb") do |file|
+        file.write(res.body)
       end
     rescue Exception => e
       log_error("could not fetch version", e)
@@ -259,5 +258,23 @@ class Quilt
     output = "#{outversion[:base]}#{resolve_dependancies(modules, outversion, {})}#{outversion[:footer] ?
                                                                                     outversion[:footer] :
                                                                                     ''}"
+  end
+
+  def healthy?
+    # return true if no remote info
+    return [true, nil] if !@config[:remote_host] || !@config[:remote_path]
+    # fetch health_check.txt from remote URL
+    host = @config[:remote_host].to_s
+    port = @config[:remote_port] ? @config[:remote_port].to_i : 80
+    path = File.join(@config[:remote_path].to_s, 'health_check.txt')
+    begin
+      res = Net::HTTP.get_response(host, path, port)
+      if (res.code != "200")
+        return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - status #{res.code}"]
+      end
+    rescue Exception => e
+      return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - #{e.message}"]
+    end
+    [true, nil]
   end
 end
