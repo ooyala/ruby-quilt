@@ -14,15 +14,17 @@ class Quilt
   PREFIX_KEY = "prefix"
   DEBUG_PREFIX_KEY = "debug_prefix"
   ARCHIVE_SUFFIX = ".tgz"
+  DEFAULT_LRU_SIZE = 10
 
-  def initialize(config = "quilt", size = 10, log = Logger.new(STDOUT))
+  def initialize(config = "quilt", log = Logger.new(STDOUT))
     @config = {
       :local_path => Ecology.property("#{config ? "#{config}:" : ""}local_path"),
       :remote_host => Ecology.property("#{config ? "#{config}:" : ""}remote_host"),
       :remote_path => Ecology.property("#{config ? "#{config}:" : ""}remote_path"),
-      :remote_port => Ecology.property("#{config ? "#{config}:" : ""}remote_port")
+      :remote_port => Ecology.property("#{config ? "#{config}:" : ""}remote_port"),
+      :lru_size => Ecology.property("#{config ? "#{config}:" : ""}lru_size")
     };
-    @versions = LRUCache.new(size)
+    @versions = LRUCache.new(@config[:lru_size] ? @config[:lru_size] : DEFAULT_LRU_SIZE)
     @log = log
 
     if (@config[:local_path])

@@ -1,5 +1,6 @@
 {
   "quilt": {
+    "lru_size": 10,
     "local_path": "./test/mock/good_project",
     "remote_host": "localhost",
     "remote_port": 1338,
