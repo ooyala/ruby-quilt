@@ -4,6 +4,7 @@ require 'net/http'
 require 'popen4'
 require 'fileutils'
 require 'ecology'
+require "#{File.join(File.dirname(__FILE__), "lru_cache")}"
 
 class Quilt
   HEADER_KEY = "header"
@@ -14,14 +15,14 @@ class Quilt
   DEBUG_PREFIX_KEY = "debug_prefix"
   ARCHIVE_SUFFIX = ".tgz"
 
-  def initialize(config = "quilt", log = Logger.new(STDOUT))
+  def initialize(config = "quilt", size = 10, log = Logger.new(STDOUT))
     @config = {
       :local_path => Ecology.property("#{config ? "#{config}:" : ""}local_path"),
       :remote_host => Ecology.property("#{config ? "#{config}:" : ""}remote_host"),
       :remote_path => Ecology.property("#{config ? "#{config}:" : ""}remote_path"),
       :remote_port => Ecology.property("#{config ? "#{config}:" : ""}remote_port")
     };
-    @versions = {};
+    @versions = LRUCache.new(size)
     @log = log
 
     if (@config[:local_path])
@@ -186,6 +187,10 @@ class Quilt
 
   def get_version(name)
     return @versions[name] if @versions[name]
+    # check local path
+    @versions[name] = load_version(@config[:local_path], name)
+    return @versions[name] if @versions[name]
+    # check remote path
     if (!@config[:remote_host] || !@config[:remote_path])
       log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
       return nil

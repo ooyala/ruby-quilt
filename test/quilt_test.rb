@@ -33,7 +33,7 @@ class QuiltTest < Scope::TestCase
       should "throw an exception if Ecology is not initialized" do
         error = nil
         begin
-          Quilt.new("quilt", FakeLogger.new)
+          Quilt.new("quilt", 10, FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -45,7 +45,7 @@ class QuiltTest < Scope::TestCase
         Ecology.read(BAD_ECOLOGY)
         error = nil
         begin
-          Quilt.new("quilt", FakeLogger.new)
+          Quilt.new("quilt", 10, FakeLogger.new)
         rescue Exception => e
           error = e
         end
@@ -57,7 +57,7 @@ class QuiltTest < Scope::TestCase
         Ecology.read(TEST_ECOLOGY)
         error = nil
         begin
-          quilt = Quilt.new("quilt", FakeLogger.new)
+          quilt = Quilt.new("quilt", 10, FakeLogger.new)
           assert quilt.is_a?(Quilt)
         rescue Exception => e
           error = e
@@ -85,16 +85,16 @@ class QuiltTest < Scope::TestCase
     setup do
       Ecology.reset
       Ecology.read(TEST_ECOLOGY)
-      @quilt = Quilt.new("quilt", FakeLogger.new)
+      @quilt = Quilt.new("quilt", 10, FakeLogger.new)
       Ecology.reset
       Ecology.read(BAD_REMOTE_PATH_ECOLOGY)
-      @bad_remote_path_quilt = Quilt.new("quilt", FakeLogger.new)
+      @bad_remote_path_quilt = Quilt.new("quilt", 10, FakeLogger.new)
       Ecology.reset
       Ecology.read(BAD_REMOTE_ECOLOGY)
-      @bad_remote_quilt = Quilt.new("quilt", FakeLogger.new)
+      @bad_remote_quilt = Quilt.new("quilt", 10, FakeLogger.new)
       Ecology.reset
       Ecology.read(NO_REMOTE_ECOLOGY)
-      @no_remote_quilt = Quilt.new("quilt", FakeLogger.new)
+      @no_remote_quilt = Quilt.new("quilt", 10, FakeLogger.new)
     end
 
     context "get_module_name" do
