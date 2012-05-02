@@ -17,12 +17,13 @@ class Quilt
   DEFAULT_LRU_SIZE = 10
 
   def initialize(config = "quilt", log = Logger.new(STDOUT))
+    config_prefix = config ? "#{config}:" : ""
     @config = {
-      :local_path => Ecology.property("#{config ? "#{config}:" : ""}local_path"),
-      :remote_host => Ecology.property("#{config ? "#{config}:" : ""}remote_host"),
-      :remote_path => Ecology.property("#{config ? "#{config}:" : ""}remote_path"),
-      :remote_port => Ecology.property("#{config ? "#{config}:" : ""}remote_port"),
-      :lru_size => Ecology.property("#{config ? "#{config}:" : ""}lru_size")
+      :local_path => Ecology.property("#{config_prefix}local_path", :as => String),
+      :remote_host => Ecology.property("#{config_prefix}remote_host", :as => String),
+      :remote_path => Ecology.property("#{config_prefix}remote_path", :as => String),
+      :remote_port => Ecology.property("#{config_prefix}remote_port", :as => String),
+      :lru_size => Ecology.property("#{config_prefix}lru_size", :as => Fixnum)
     };
     @versions = LRUCache.new(@config[:lru_size] ? @config[:lru_size] : DEFAULT_LRU_SIZE)
     @log = log

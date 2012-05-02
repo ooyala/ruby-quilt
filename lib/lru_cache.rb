@@ -1,6 +1,6 @@
 class LRUCache
   def initialize(size = 10)
-    @size = size
+    @size = size.to_i
     @store = {}
     @lru = []
   end
