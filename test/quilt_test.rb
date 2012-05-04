@@ -356,6 +356,10 @@ class QuiltTest < Scope::TestCase
       should "fallback to non-debug if debug does not exist" do
         assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug)
       end
+
+      should "add dynamic module if it exists" do
+        assert_equal "h\nc\n8\n0\n[dyn]f1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, "[dyn]")
+      end
     end
 
     context "health" do

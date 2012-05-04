@@ -250,7 +250,7 @@ class Quilt
     @versions[name]
   end
 
-  def stitch(selector, version_name, prefix = :default)
+  def stitch(selector, version_name, prefix = :default, dynamic_module = nil)
     return '' if !selector
     version = get_version(version_name)
     if (!version)
@@ -270,9 +270,15 @@ class Quilt
     end
 
     # resolve dependancies
-    output = "#{outversion[:base]}#{resolve_dependancies(modules, outversion, {})}#{outversion[:footer] ?
-                                                                                    outversion[:footer] :
-                                                                                    ''}"
+    output = "#{
+      outversion[:base]
+    }#{
+      resolve_dependancies(modules, outversion, {})
+    }#{
+      dynamic_module ? dynamic_module : ''
+    }#{
+      outversion[:footer] ?  outversion[:footer] : ''
+    }"
   end
 
   def health
