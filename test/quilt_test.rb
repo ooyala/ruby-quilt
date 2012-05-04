@@ -171,7 +171,8 @@ class QuiltTest < Scope::TestCase
       should "return a version" do
         version = @quilt.load_version(File.dirname(__FILE__) + "/mock/good_project", "1.0.0")
         assert version
-        assert_equal "h\nc\n", version[:default][:base]
+        assert_equal "h\n", version[:default][:header]
+        assert_equal "c\n", version[:default][:common]
         expected = {
           "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
@@ -191,7 +192,8 @@ class QuiltTest < Scope::TestCase
       should "gracefully handle bad manifest entries" do
         version = @quilt.load_version(File.dirname(__FILE__) + "/mock/bad_project", "1.0.0")
         assert version
-        assert_equal "c\n", version[:default][:base]
+        assert_equal '', version[:default][:header]
+        assert_equal "c\n", version[:default][:common]
         expected = {
           "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
@@ -205,7 +207,7 @@ class QuiltTest < Scope::TestCase
           "9.js" => { :dependancies => [], :module => "9\n" }
         }
         assert_equal expected, version[:default][:optional]
-        assert_nil version[:default][:footer]
+        assert_equal '', version[:default][:footer]
       end
     end
 
@@ -213,7 +215,8 @@ class QuiltTest < Scope::TestCase
       setup do
         @version = {
           :default => {
-            :base => "h\nc\n",
+            :header => "h\n",
+            :common => "c\n",
             :optional => {
               "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
               "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
@@ -266,7 +269,8 @@ class QuiltTest < Scope::TestCase
       should "return version if it exists" do
         version = @no_remote_quilt.get_version('1.0.0')
         assert version
-        assert_equal "h\nc\n", version[:default][:base]
+        assert_equal "h\n", version[:default][:header]
+        assert_equal "c\n", version[:default][:common]
         expected = {
           "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
@@ -286,7 +290,8 @@ class QuiltTest < Scope::TestCase
       should "fetch remote version if it does not exist locally" do
         version = @quilt.get_version('2.0.0')
         assert version
-        assert_equal "h\nc\n", version[:default][:base]
+        assert_equal "h\n", version[:default][:header]
+        assert_equal "c\n", version[:default][:common]
         expected = {
           "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
@@ -358,7 +363,17 @@ class QuiltTest < Scope::TestCase
       end
 
       should "add dynamic module if it exists" do
-        assert_equal "h\nc\n8\n0\n[dyn]f1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, "[dyn]")
+        assert_equal "[bh]h\n[ah][bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+          @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, {
+            :before_header => '[bh]',
+            :after_header => '[ah]',
+            :before_common => '[bc]',
+            :after_common => '[ac]',
+            :before_optional => '[bo]',
+            :after_optional => '[ao]',
+            :before_footer => '[bf]',
+            :after_footer => '[af]'
+        })
       end
     end
 

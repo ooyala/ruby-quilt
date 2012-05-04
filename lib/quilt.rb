@@ -80,8 +80,10 @@ class Quilt
       :name => version_name,
       :dir => File.join(local_path, version_name),
       :default => {
-        :base => '',
+        :header => '',
+        :common => '',
         :optional => {},
+        :footer => ''
       }
     }
     begin
@@ -93,8 +95,10 @@ class Quilt
         new_version[:debug] = {
           :dir => manifest[DEBUG_PREFIX_KEY] ?  File.join(new_version[:dir], manifest[DEBUG_PREFIX_KEY]) :
                                                 new_version[:dir],
-          :base => '',
-          :optional => {}
+          :header => '',
+          :common => '',
+          :optional => {},
+          :footer => ''
         }
       end
     rescue Exception => e
@@ -120,8 +124,7 @@ class Quilt
       dir = new_version[prefix][:dir]
       if manifest[HEADER_KEY]
         begin
-          new_version[prefix][:base] =
-            "#{new_version[prefix][:base]}#{File.open(File.join(dir, manifest[HEADER_KEY]), "rb").read}"
+          new_version[prefix][:header] = File.open(File.join(dir, manifest[HEADER_KEY]), "rb").read
         rescue Exception => e
           log_error("  Could not load #{prefix.to_s} header: #{manifest[HEADER_KEY]}", e)
         end
@@ -129,8 +132,8 @@ class Quilt
       if manifest[COMMON_KEY] && manifest[COMMON_KEY].is_a?(Array)
         manifest[COMMON_KEY].each do |filename|
           begin
-            new_version[prefix][:base] =
-              "#{new_version[prefix][:base]}#{File.open(File.join(dir, filename), "rb").read}"
+            new_version[prefix][:common] =
+              "#{new_version[prefix][:common]}#{File.open(File.join(dir, filename), "rb").read}"
           rescue Exception => e
             log_error("  Could not load #{prefix.to_s} common module: #{filename}", e)
           end
@@ -154,7 +157,7 @@ class Quilt
           new_version[prefix][:footer] = File.open(File.join(dir, manifest[FOOTER_KEY]), "rb").read
         rescue Exception => e
           log_error("  Could not load #{prefix.to_s} footer: #{manifest[FOOTER_KEY]}", e)
-          new_version[:footer] = nil
+          new_version[:footer] = ''
         end
       end
     end
@@ -250,7 +253,7 @@ class Quilt
     @versions[name]
   end
 
-  def stitch(selector, version_name, prefix = :default, dynamic_module = nil)
+  def stitch(selector, version_name, prefix = :default, dynamic_modules = nil)
     return '' if !selector
     version = get_version(version_name)
     if (!version)
@@ -270,14 +273,31 @@ class Quilt
     end
 
     # resolve dependancies
+    dynamics = dynamic_modules && dynamic_modules.is_a?(Hash) ? dynamic_modules : {}
     output = "#{
-      outversion[:base]
+      dynamics[:before_header] ? dynamics[:before_header] : ''
+    }#{
+      outversion[:header]
+    }#{
+      dynamics[:after_header] ? dynamics[:after_header] : ''
+    }#{
+      dynamics[:before_common] ? dynamics[:before_common] : ''
+    }#{
+      outversion[:common]
+    }#{
+      dynamics[:after_common] ? dynamics[:after_common] : ''
+    }#{
+      dynamics[:before_optional] ? dynamics[:before_optional] : ''
     }#{
       resolve_dependancies(modules, outversion, {})
     }#{
-      dynamic_module ? dynamic_module : ''
+      dynamics[:after_optional] ? dynamics[:after_optional] : ''
     }#{
-      outversion[:footer] ?  outversion[:footer] : ''
+      dynamics[:before_footer] ? dynamics[:before_footer] : ''
+    }#{
+      outversion[:footer]
+    }#{
+      dynamics[:after_footer] ? dynamics[:after_footer] : ''
     }"
   end
 
