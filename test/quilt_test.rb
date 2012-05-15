@@ -79,7 +79,19 @@ class QuiltTest < Scope::TestCase
           s.shutdown
         end
       end
-      sleep(5) # wait for the server to start up
+      started = false
+      count = 0
+      while (!started && count < 10) # wait a max of 5 seconds for the server to start
+        begin
+          res = Net::HTTP.get_response('localhost', '/health_check.txt', 1337)
+          if (res.code == "200" && res.body != nil)
+            started = true
+          end
+        rescue Exception => e
+        end
+        count += 1
+        sleep(0.5)
+      end
     end
 
     setup do
