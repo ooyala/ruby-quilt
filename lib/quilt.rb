@@ -324,7 +324,7 @@ class Quilt
     if (@config[:remote_host] && @config[:remote_path])
       host = @config[:remote_host].to_s
       port = @config[:remote_port] ? @config[:remote_port].to_i : 80
-      path = File.join(@config[:remote_path].to_s, "<version>#{ARCHIVE_SUFFIX}")
+      path = File.join(@config[:remote_path].to_s, "[version]#{ARCHIVE_SUFFIX}")
       remote_url = "Remote URL: http://#{host}:#{port}#{path}"
     end
     body = <<EOS
