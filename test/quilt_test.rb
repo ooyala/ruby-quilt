@@ -375,12 +375,12 @@ class QuiltTest < Scope::TestCase
       end
 
       should "add dynamic module if it exists" do
-        assert_equal "[bh]h\n[ah][bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+        assert_equal "[bh]h\n[ah][bc]c\n7\n9\n1\n[bo]8\n0\n[ao][bf]f1.0.0\n[af]",
           @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, {
             :before_header => '[bh]',
             :after_header => '[ah]',
             :before_common => '[bc]',
-            :after_common => '[ac]',
+            :after_common => ['1.js'],
             :before_optional => '[bo]',
             :after_optional => '[ao]',
             :before_footer => '[bf]',

@@ -275,30 +275,34 @@ class Quilt
     # resolve dependancies
     dynamics = dynamic_modules && dynamic_modules.is_a?(Hash) ? dynamic_modules : {}
     output = "#{
-      dynamics[:before_header] ? dynamics[:before_header] : ''
+      resolve_dynamic(:before_header, dynamics, outversion)
     }#{
       outversion[:header]
     }#{
-      dynamics[:after_header] ? dynamics[:after_header] : ''
+      resolve_dynamic(:after_header, dynamics, outversion)
     }#{
-      dynamics[:before_common] ? dynamics[:before_common] : ''
+      resolve_dynamic(:before_common, dynamics, outversion)
     }#{
       outversion[:common]
     }#{
-      dynamics[:after_common] ? dynamics[:after_common] : ''
+      resolve_dynamic(:after_common, dynamics, outversion)
     }#{
-      dynamics[:before_optional] ? dynamics[:before_optional] : ''
+      resolve_dynamic(:before_optional, dynamics, outversion)
     }#{
       resolve_dependancies(modules, outversion, {})
     }#{
-      dynamics[:after_optional] ? dynamics[:after_optional] : ''
+      resolve_dynamic(:after_optional, dynamics, outversion)
     }#{
-      dynamics[:before_footer] ? dynamics[:before_footer] : ''
+      resolve_dynamic(:before_footer, dynamics, outversion)
     }#{
       outversion[:footer]
     }#{
-      dynamics[:after_footer] ? dynamics[:after_footer] : ''
+      resolve_dynamic(:after_footer, dynamics, outversion)
     }"
+  end
+
+  def resolve_dynamic(sym, dynamics, version)
+    dynamics[sym].is_a?(Array) ? resolve_dependancies(dynamics[sym], version, {}) : (dynamics[sym] || '')
   end
 
   def health
