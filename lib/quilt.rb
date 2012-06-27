@@ -17,7 +17,7 @@ class Quilt
   DEFAULT_LRU_SIZE = 10
 
   def initialize(config = "quilt", log = Logger.new(STDOUT))
-    @@fetching_versions = []
+    @@fetching_versions = {}
     config_prefix = config ? "#{config}:" : ""
     @config = {
       :local_path => Ecology.property("#{config_prefix}local_path", :as => String),
@@ -204,72 +204,69 @@ class Quilt
     return @versions[name] if @versions[name]
     # check local path
     # sleep at most 10 seconds to wait until a version is fetched and untared
-    sleeps = 0
-    while (@@fetching_versions.include?(name) && sleeps < 10)
-      sleep(1)
-      sleeps += 1
-    end
-    if version_exists_locally?(@config[:local_path], name)
-      @versions[name] = load_version(@config[:local_path], name)
-      return @versions[name] if @versions[name]
-    end
-    # check remote path
-    @@fetching_versions.push(name).uniq!
-    if (!@config[:remote_host] || !@config[:remote_path])
-      log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
-      return nil
-    end
-    port = @config[:remote_port] ? @config[:remote_port].to_i : 80
-    # Fetch the version
-    filename = "#{name}#{ARCHIVE_SUFFIX}"
-    version_dir = File.join(@config[:local_path], name)
-    begin
-      res = Net::HTTP.get_response(@config[:remote_host].to_s,
-                                   File.join(@config[:remote_path].to_s, filename), port)
-      if (res.code != "200")
-        log_error("no version fetched : #{res.code}")
+    @@fetching_versions[name] ||= Mutex.new
+    @@fetching_versions[name].synchronize do
+      if version_exists_locally?(@config[:local_path], name)
+        @versions[name] = load_version(@config[:local_path], name)
+        return @versions[name] if @versions[name]
+      end
+      # check remote path
+      if (!@config[:remote_host] || !@config[:remote_path])
+        log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
         return nil
       end
-      FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
-      open(File.join(version_dir, filename), "wb") do |file|
-        file.write(res.body)
-      end
-    rescue Exception => e
-      log_error("could not fetch version", e)
-      return nil
-    end
-    # Untar the version
-    tar_stdout = nil
-    tar_stderr = nil
-    tar_status =
-      POpen4::popen4("cd #{version_dir} && tar -xzf #{filename} && rm #{filename}") do |stdo, stde, stdi, pid|
-      stdi.close
-      tar_stdout = stdo.read.strip
-      tar_stderr = stde.read.strip
-    end
-    if (!tar_status.exitstatus.zero?)
-      log_error("unable to untar package: cd #{version_dir} && tar -xzf #{filename} && rm #{filename}")
-      log_error("stdout: #{tar_stdout}")
-      log_error("stderr: #{tar_stderr}")
+      port = @config[:remote_port] ? @config[:remote_port].to_i : 80
+      # Fetch the version
+      filename = "#{name}#{ARCHIVE_SUFFIX}"
+      version_dir = File.join(@config[:local_path], name)
       begin
-        FileUtils.rm_r(version_dir)
+        res = Net::HTTP.get_response(@config[:remote_host].to_s,
+                                     File.join(@config[:remote_path].to_s, filename), port)
+        if (res.code != "200")
+          log_error("no version fetched : #{res.code}")
+          return nil
+        end
+        FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
+        open(File.join(version_dir, filename), "wb") do |file|
+          file.write(res.body)
+        end
       rescue Exception => e
-        # do nothing
+        log_error("could not fetch version", e)
+        return nil
       end
-      return nil
-    end
-    # Load the version
-    @versions[name] = load_version(@config[:local_path], name)
-    if (!@versions[name])
-      begin
-        FileUtils.rm_r(version_dir)
-      rescue Exception => e
-        # do nothing
+      # Untar the version
+      tar_stdout = nil
+      tar_stderr = nil
+      tar_status =
+        POpen4::popen4("cd #{version_dir} && tar -xzf #{filename} && rm #{filename}") do |stdo, stde, stdi, pid|
+        stdi.close
+        tar_stdout = stdo.read.strip
+        tar_stderr = stde.read.strip
       end
-      return nil
+      if (!tar_status.exitstatus.zero?)
+        log_error("unable to untar package: cd #{version_dir} && tar -xzf #{filename} && rm #{filename}")
+        log_error("stdout: #{tar_stdout}")
+        log_error("stderr: #{tar_stderr}")
+        begin
+          FileUtils.rm_r(version_dir)
+        rescue Exception => e
+          # do nothing
+        end
+        return nil
+      end
+      # Load the version
+      @versions[name] = load_version(@config[:local_path], name)
+      if (!@versions[name])
+        begin
+          FileUtils.rm_r(version_dir)
+        rescue Exception => e
+          # do nothing
+        end
+        return nil
+      end
     end
-    @@fetching_versions.reject! do |element|
-      name == element
+    @@fetching_versions.reject! do |key, value|
+      key == name
     end
     @versions[name]
   end
