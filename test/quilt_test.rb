@@ -144,32 +144,33 @@ class QuiltTest < Scope::TestCase
 
     context "get_module" do
       should "return nil if the module does not exist" do
-        mod = @quilt.get_module("randomjunk", [], "morerandomjunk")
+        mod = @quilt.get_module("randomjunk", [], :optional, "morerandomjunk")
         assert_nil mod
       end
 
       should "return the module if the module does exist" do
-        mod = @quilt.get_module("optional/0.js", ["1.js"], File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("optional/0.js", ["1.js"], :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
         assert_equal ["1.js"], mod[:dependancies]
         assert_equal "0\n", mod[:module]
       end
 
       should "handle relative and non-relative filenames" do
-        mod = @quilt.get_module("optional/0.js", [], File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("optional/0.js", [], :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
-        mod = @quilt.get_module("1.js", [], File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("1.js", [], :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
-        mod = @quilt.get_module("./optional/0.js", [], File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("./optional/0.js", [], :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
-        mod = @quilt.get_module("./1.js", [], File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("./1.js", [], :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
       end
 
       should "handle a single dependancy as a string" do
-        mod = @quilt.get_module("optional/0.js", "1.js", File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
+        mod = @quilt.get_module("optional/0.js", "1.js", :optional, File.dirname(__FILE__) + "/mock/good_project/1.0.0/")
         assert mod
         assert_equal ["1.js"], mod[:dependancies]
+        assert_equal :optional, mod[:position]
         assert_equal "0\n", mod[:module]
       end
     end
@@ -186,16 +187,16 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\n", version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
-          "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
-          "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
-          "2.js" => { :dependancies => [ "8.js" ], :module => "2\n" },
-          "3.js" => { :dependancies => [], :module => "3\n" },
-          "4.js" => { :dependancies => [], :module => "4\n" },
-          "5.js" => { :dependancies => [], :module => "5\n" },
-          "6.js" => { :dependancies => [], :module => "6\n" },
-          "7.js" => { :dependancies => [], :module => "7\n" },
-          "8.js" => { :dependancies => [], :module => "8\n" },
-          "9.js" => { :dependancies => [], :module => "9\n" }
+          "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
+          "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
+          "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
+          "3.js" => { :position => :optional, :dependancies => [], :module => "3\n" },
+          "4.js" => { :position => :optional, :dependancies => [], :module => "4\n" },
+          "5.js" => { :position => :before_header, :dependancies => [], :module => "5\n" },
+          "6.js" => { :position => :after_header, :dependancies => [], :module => "6\n" },
+          "7.js" => { :position => :optional, :dependancies => [], :module => "7\n" },
+          "8.js" => { :position => :optional, :dependancies => [], :module => "8\n" },
+          "9.js" => { :position => :optional, :dependancies => [], :module => "9\n" }
         }
         assert_equal expected, version[:default][:optional]
         assert_equal version[:default][:footer], "f1.0.0\n"
@@ -207,16 +208,16 @@ class QuiltTest < Scope::TestCase
         assert_equal '', version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
-          "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
-          "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
-          "2.js" => { :dependancies => [ "8.js" ], :module => "2\n" },
-          "3.js" => { :dependancies => [], :module => "3\n" },
-          "4.js" => { :dependancies => [], :module => "4\n" },
-          "5.js" => { :dependancies => [], :module => "5\n" },
-          "6.js" => { :dependancies => [], :module => "6\n" },
-          "7.js" => { :dependancies => [], :module => "7\n" },
-          "8.js" => { :dependancies => [], :module => "8\n" },
-          "9.js" => { :dependancies => [], :module => "9\n" }
+          "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
+          "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
+          "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
+          "3.js" => { :position => :optional, :dependancies => [], :module => "3\n" },
+          "4.js" => { :position => :optional, :dependancies => [], :module => "4\n" },
+          "5.js" => { :position => :optional, :dependancies => [], :module => "5\n" },
+          "6.js" => { :position => :optional, :dependancies => [], :module => "6\n" },
+          "7.js" => { :position => :optional, :dependancies => [], :module => "7\n" },
+          "8.js" => { :position => :optional, :dependancies => [], :module => "8\n" },
+          "9.js" => { :position => :optional, :dependancies => [], :module => "9\n" }
         }
         assert_equal expected, version[:default][:optional]
         assert_equal '', version[:default][:footer]
@@ -230,44 +231,44 @@ class QuiltTest < Scope::TestCase
             :header => "h\n",
             :common => "c\n",
             :optional => {
-              "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
-              "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
-              "2.js" => { :dependancies => [ "8.js" ], :module => "2\n" },
-              "3.js" => { :dependancies => [], :module => "3\n" },
-              "4.js" => { :dependancies => [], :module => "4\n" },
-              "5.js" => { :dependancies => [ "6.js" ], :module => "5\n" },
-              "6.js" => { :dependancies => [ "5.js" ], :module => "6\n" },
-              "7.js" => { :dependancies => [], :module => "7\n" },
-              "8.js" => { :dependancies => [ "9.js" ], :module => "8\n" },
-              "9.js" => { :dependancies => [], :module => "9\n" }
+              "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
+              "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
+              "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
+              "3.js" => { :position => :optional, :dependancies => [], :module => "3\n" },
+              "4.js" => { :position => :optional, :dependancies => [], :module => "4\n" },
+              "5.js" => { :position => :optional, :dependancies => [ "6.js" ], :module => "5\n" },
+              "6.js" => { :position => :optional, :dependancies => [ "5.js" ], :module => "6\n" },
+              "7.js" => { :position => :optional, :dependancies => [], :module => "7\n" },
+              "8.js" => { :position => :optional, :dependancies => [ "9.js" ], :module => "8\n" },
+              "9.js" => { :position => :optional, :dependancies => [], :module => "9\n" }
             }
           }
         }
       end
 
       should "return an empty string for no modules" do
-        out = @quilt.resolve_dependancies(nil, @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, nil, @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies([], @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, [], @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies({ "yo" => "sup" }, @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, { "yo" => "sup" }, @version[:default]);
         assert_equal '', out
-        out = @quilt.resolve_dependancies("hi", @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, "hi", @version[:default]);
         assert_equal '', out
       end
 
       should "resolve dependancies" do
-        out = @quilt.resolve_dependancies([ "0.js", "1.js", "2.js" ], @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, [ "0.js", "1.js", "2.js" ], @version[:default]);
         assert_equal "9\n8\n0\n7\n1\n2\n", out
       end
 
       should "gracefully handle circular dependancies" do
-        out = @quilt.resolve_dependancies([ "5.js" ], @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, [ "5.js" ], @version[:default]);
         assert_equal "6\n5\n", out
       end
 
       should "gracefully handle non-existant modules" do
-        out = @quilt.resolve_dependancies([ "5.js", "oogabooga" ], @version[:default]);
+        out = @quilt.resolve_dependancies(:optional, [ "5.js", "oogabooga" ], @version[:default]);
         assert_equal "6\n5\n", out
       end
     end
@@ -284,16 +285,16 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\n", version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
-          "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
-          "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
-          "2.js" => { :dependancies => [ "8.js" ], :module => "2\n" },
-          "3.js" => { :dependancies => [], :module => "3\n" },
-          "4.js" => { :dependancies => [], :module => "4\n" },
-          "5.js" => { :dependancies => [], :module => "5\n" },
-          "6.js" => { :dependancies => [], :module => "6\n" },
-          "7.js" => { :dependancies => [], :module => "7\n" },
-          "8.js" => { :dependancies => [], :module => "8\n" },
-          "9.js" => { :dependancies => [], :module => "9\n" }
+          "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
+          "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
+          "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
+          "3.js" => { :position => :optional, :dependancies => [], :module => "3\n" },
+          "4.js" => { :position => :optional, :dependancies => [], :module => "4\n" },
+          "5.js" => { :position => :before_header, :dependancies => [], :module => "5\n" },
+          "6.js" => { :position => :after_header, :dependancies => [], :module => "6\n" },
+          "7.js" => { :position => :optional, :dependancies => [], :module => "7\n" },
+          "8.js" => { :position => :optional, :dependancies => [], :module => "8\n" },
+          "9.js" => { :position => :optional, :dependancies => [], :module => "9\n" }
         }
         assert_equal expected, version[:default][:optional]
         assert_equal "f1.0.0\n", version[:default][:footer]
@@ -305,16 +306,16 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\n", version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
-          "0.js" => { :dependancies => [ "8.js" ], :module => "0\n" },
-          "1.js" => { :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
-          "2.js" => { :dependancies => [ "8.js" ], :module => "2\n" },
-          "3.js" => { :dependancies => [], :module => "3\n" },
-          "4.js" => { :dependancies => [], :module => "4\n" },
-          "5.js" => { :dependancies => [], :module => "5\n" },
-          "6.js" => { :dependancies => [], :module => "6\n" },
-          "7.js" => { :dependancies => [], :module => "7\n" },
-          "8.js" => { :dependancies => [], :module => "8\n" },
-          "9.js" => { :dependancies => [], :module => "9\n" }
+          "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
+          "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
+          "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
+          "3.js" => { :position => :optional, :dependancies => [], :module => "3\n" },
+          "4.js" => { :position => :optional, :dependancies => [], :module => "4\n" },
+          "5.js" => { :position => :optional, :dependancies => [], :module => "5\n" },
+          "6.js" => { :position => :optional, :dependancies => [], :module => "6\n" },
+          "7.js" => { :position => :optional, :dependancies => [], :module => "7\n" },
+          "8.js" => { :position => :optional, :dependancies => [], :module => "8\n" },
+          "9.js" => { :position => :optional, :dependancies => [], :module => "9\n" }
         }
         assert_equal expected, version[:default][:optional]
         assert_equal "f2.0.0\n", version[:default][:footer]
@@ -348,7 +349,7 @@ class QuiltTest < Scope::TestCase
       end
 
       should "properly stitch for an existing version with selector function" do
-        assert_equal "h\nc\n8\n0\n7\n9\n1\n2\n3\n4\n5\n6\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
+        assert_equal "5\nh\n6\nc\n8\n0\n7\n9\n1\n2\n3\n4\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
           true
         end, '1.0.0')
       end
@@ -375,12 +376,25 @@ class QuiltTest < Scope::TestCase
       end
 
       should "add dynamic module if it exists" do
-        assert_equal "[bh]h\n[ah][bc]c\n7\n9\n1\n[bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+        assert_equal "[bh]h\n[ah][bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
           @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, {
             :before_header => '[bh]',
             :after_header => '[ah]',
             :before_common => '[bc]',
-            :after_common => ['1.js'],
+            :after_common => '[ac]',
+            :before_optional => '[bo]',
+            :after_optional => '[ao]',
+            :before_footer => '[bf]',
+            :after_footer => '[af]'
+        })
+      end
+      should "add modules to the correct position" do
+        assert_equal "[bh]5\nh\n6\n[bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+          @no_remote_quilt.stitch(['0.js', '5.js'], '1.0.0', :debug, {
+            :before_header => '[bh]',
+            :after_header => [ '6.js' ],
+            :before_common => '[bc]',
+            :after_common => '[ac]',
             :before_optional => '[bo]',
             :after_optional => '[ao]',
             :before_footer => '[bf]',

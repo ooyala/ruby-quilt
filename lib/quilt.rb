@@ -12,6 +12,8 @@ class Quilt
   OPTIONAL_KEY = "optional"
   FOOTER_KEY = "footer"
   PREFIX_KEY = "prefix"
+  DEPENDANCIES_KEY = "dependancies"
+  POSITION_KEY = "position"
   DEBUG_PREFIX_KEY = "debug_prefix"
   ARCHIVE_SUFFIX = ".tgz"
   DEFAULT_LRU_SIZE = 10
@@ -60,8 +62,9 @@ class Quilt
     matches[2]
   end
 
-  def get_module(filename, dependancies, version_dir)
+  def get_module(filename, dependancies, position, version_dir)
     tmp_module = {}
+    tmp_module[:position] = position
     tmp_module[:dependancies] = dependancies.is_a?(Array) ? dependancies :
                                                             (dependancies.is_a?(String) ? [ dependancies ] :
                                                             [])
@@ -126,9 +129,13 @@ class Quilt
     #    ],
     #    "optional" : {
     #      "<module file>" : [ "<dependancy module name>", ... ],
+    #      "<module file>" : { "dependancies" : [ "<dependancy module name>", ... ], "position" : "<position>" }
     #      ...
     #    }
     #  }
+    #
+    #  where <position> can be one of: before_header, after_header, before_common, after_common,
+    #                                  before_optional, optional, after_optional, before_footer, after_footer
     module_loader = Proc.new do |prefix|
       dir = new_version[prefix][:dir]
       if manifest[HEADER_KEY]
@@ -149,10 +156,18 @@ class Quilt
         end
       end
       if manifest[OPTIONAL_KEY] && manifest[OPTIONAL_KEY].is_a?(Hash)
-        manifest[OPTIONAL_KEY].each do |filename, dependancies|
+        manifest[OPTIONAL_KEY].each do |filename, value|
+          dependancies = []
+          position = :optional
+          if (value.is_a?(Array))
+            dependancies = value
+          elsif (value.is_a?(Hash))
+            dependancies = value[DEPENDANCIES_KEY] || []
+            position = value[POSITION_KEY] ? value[POSITION_KEY].to_sym : :optional
+          end
           tmp_module_name = get_module_name(filename)
           if (tmp_module_name)
-            tmp_module = get_module(filename, dependancies, dir)
+            tmp_module = get_module(filename, dependancies, position, dir)
             if (tmp_module)
               new_version[prefix][:optional][tmp_module_name] = tmp_module
             end
@@ -177,7 +192,7 @@ class Quilt
     new_version
   end
 
-  def resolve_dependancies(modules, version, all_modules = {})
+  def resolve_dependancies(position, modules, version, all_modules = {})
     out = ''
     return out if !modules || !(modules.is_a?(Array)) || modules.empty?
     my_all_modules = all_modules
@@ -193,8 +208,8 @@ class Quilt
         break
       end
       my_all_modules[name] = 1
-      out = "#{out}#{resolve_dependancies(version[:optional][name][:dependancies], version, my_all_modules)}"
-      out = "#{out}#{version[:optional][name][:module]}"
+      out = "#{out}#{resolve_dependancies(position, version[:optional][name][:dependancies], version, my_all_modules)}"
+      out = "#{out}#{version[:optional][name][:module]}" if version[:optional][name][:position] == position
       my_all_modules[name] = 2
     end
     out
@@ -293,34 +308,35 @@ class Quilt
     # resolve dependancies
     dynamics = dynamic_modules && dynamic_modules.is_a?(Hash) ? dynamic_modules : {}
     output = "#{
-      resolve_dynamic(:before_header, dynamics, outversion)
+      resolve_dynamic(:before_header, modules, dynamics, outversion)
     }#{
       outversion[:header]
     }#{
-      resolve_dynamic(:after_header, dynamics, outversion)
+      resolve_dynamic(:after_header, modules, dynamics, outversion)
     }#{
-      resolve_dynamic(:before_common, dynamics, outversion)
+      resolve_dynamic(:before_common, modules, dynamics, outversion)
     }#{
       outversion[:common]
     }#{
-      resolve_dynamic(:after_common, dynamics, outversion)
+      resolve_dynamic(:after_common, modules, dynamics, outversion)
     }#{
-      resolve_dynamic(:before_optional, dynamics, outversion)
+      resolve_dynamic(:before_optional, modules, dynamics, outversion)
     }#{
-      resolve_dependancies(modules, outversion, {})
+      resolve_dynamic(:optional, modules, dynamics, outversion)
     }#{
-      resolve_dynamic(:after_optional, dynamics, outversion)
+      resolve_dynamic(:after_optional, modules, dynamics, outversion)
     }#{
-      resolve_dynamic(:before_footer, dynamics, outversion)
+      resolve_dynamic(:before_footer, modules, dynamics, outversion)
     }#{
       outversion[:footer]
     }#{
-      resolve_dynamic(:after_footer, dynamics, outversion)
+      resolve_dynamic(:after_footer, modules, dynamics, outversion)
     }"
   end
 
-  def resolve_dynamic(sym, dynamics, version)
-    dynamics[sym].is_a?(Array) ? resolve_dependancies(dynamics[sym], version, {}) : (dynamics[sym] || '')
+  def resolve_dynamic(position, modules, dynamics, version)
+    dynamics[position].is_a?(Array) ? resolve_dependancies(position, dynamics[position] + modules, version, {}) :
+      "#{(dynamics[position] || '')}#{resolve_dependancies(position, modules, version, {})}"
   end
 
   def health
