@@ -17,6 +17,7 @@ class Quilt
   DEFAULT_LRU_SIZE = 10
 
   def initialize(config = "quilt", log = Logger.new(STDOUT))
+    @@fetching_versions = []
     config_prefix = config ? "#{config}:" : ""
     @config = {
       :local_path => Ecology.property("#{config_prefix}local_path", :as => String),
@@ -71,6 +72,14 @@ class Quilt
       return nil
     end
     tmp_module
+  end
+
+  def version_exists_locally?(local_path, version_name)
+    begin
+      manifest = JSON.parse(File.read(File.join(File.join(local_path, version_name), "manifest.json")))
+    rescue Exception => e
+      return false
+    end
   end
 
   def load_version(local_path, version_name)
@@ -194,9 +203,18 @@ class Quilt
   def get_version(name)
     return @versions[name] if @versions[name]
     # check local path
-    @versions[name] = load_version(@config[:local_path], name)
-    return @versions[name] if @versions[name]
+    # sleep at most 10 seconds to wait until a version is fetched and untared
+    sleeps = 0
+    while (@@fetching_versions.include?(name) && sleeps < 10)
+      sleep(1)
+      sleeps += 1
+    end
+    if version_exists_locally?(@config[:local_path], name)
+      @versions[name] = load_version(@config[:local_path], name)
+      return @versions[name] if @versions[name]
+    end
     # check remote path
+    @@fetching_versions.push(name).uniq!
     if (!@config[:remote_host] || !@config[:remote_path])
       log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
       return nil
@@ -249,6 +267,9 @@ class Quilt
         # do nothing
       end
       return nil
+    end
+    @@fetching_versions.reject! do |element|
+      name == element
     end
     @versions[name]
   end
