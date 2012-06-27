@@ -328,7 +328,7 @@ class Quilt
 
   def health
     # return true if no remote info
-    return [true, nil] if !@config[:remote_host] || !@config[:remote_path]
+    return [true, nil, nil] if !@config[:remote_host] || !@config[:remote_path]
     # fetch health_check.txt from remote URL
     host = @config[:remote_host].to_s
     port = @config[:remote_port] ? @config[:remote_port].to_i : 80
@@ -336,12 +336,13 @@ class Quilt
     begin
       res = Net::HTTP.get_response(host, path, port)
       if (res.code != "200")
-        return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - status #{res.code}"]
+        return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - status #{res.code}",
+                nil]
       end
     rescue Exception => e
-      return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - #{e.message}"]
+      return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - #{e.message}", e]
     end
-    [true, nil]
+    [true, nil, nil]
   end
 
   def status
