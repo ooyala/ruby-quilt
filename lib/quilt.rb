@@ -197,15 +197,15 @@ class Quilt
     return out if !modules || !(modules.is_a?(Array)) || modules.empty?
     my_all_modules = all_modules
     modules.each do |name|
-      break if my_all_modules[name] == 2
+      next if my_all_modules[name] == 2
       if (!version[:optional][name] || !version[:optional][name][:module])
         log_error("  invalid module: #{name}");
         my_all_modules[name] = 2
-        break
+        next
       end
       if (my_all_modules[name] == 1)
         log_error("  circular module dependancy: #{name}")
-        break
+        next
       end
       my_all_modules[name] = 1
       out = "#{out}#{resolve_dependancies(position, version[:optional][name][:dependancies], version, my_all_modules)}"

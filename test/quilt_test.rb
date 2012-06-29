@@ -348,6 +348,10 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0')
       end
 
+      should "properly stitch valid modules with selector array and invalid modules" do
+        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['invalid.js', '0.js'], '1.0.0')
+      end
+
       should "properly stitch for an existing version with selector function" do
         assert_equal "5\nh\n6\nc\n8\n0\n7\n9\n1\n2\n3\n4\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
           true
