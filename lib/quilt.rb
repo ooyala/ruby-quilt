@@ -1,9 +1,9 @@
 require 'logger'
 require 'json'
-require 'net/http'
 require 'popen4'
 require 'fileutils'
 require 'ecology'
+require 'faraday'
 require "#{File.join(File.dirname(__FILE__), "lru_cache")}"
 
 class Quilt
@@ -230,15 +230,13 @@ class Quilt
         log_error("unable to load from host: #{@config[:remote_host]}, path: #{@config[:remote_path]}")
         return nil
       end
-      port = @config[:remote_port] ? @config[:remote_port].to_i : 80
       # Fetch the version
       filename = "#{name}#{ARCHIVE_SUFFIX}"
       version_dir = File.join(@config[:local_path], name)
       begin
-        res = Net::HTTP.get_response(@config[:remote_host].to_s,
-                                     File.join(@config[:remote_path].to_s, filename), port)
-        if (res.code != "200")
-          log_error("no version fetched : #{res.code}")
+        res = fetch_remote(filename)
+        if (res.status.to_i != 200)
+          log_error("no version fetched : #{res.status.to_i}")
           return nil
         end
         FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
@@ -339,21 +337,29 @@ class Quilt
       "#{(dynamics[position] || '')}#{resolve_dependancies(position, modules, version, {})}"
   end
 
+  def fetch_remote(file)
+    host = @config[:remote_host].to_s
+    port = @config[:remote_port] ? @config[:remote_port].to_i : 80
+    path = File.join(@config[:remote_path].to_s, file)
+    conn = Faraday.new(:url => "http://#{host}:#{port}") do |faraday|
+      faraday.adapter Faraday.default_adapter
+    end
+    conn.get(path)
+  end
+
   def health
     # return true if no remote info
     return [true, nil, nil] if !@config[:remote_host] || !@config[:remote_path]
     # fetch health_check.txt from remote URL
-    host = @config[:remote_host].to_s
-    port = @config[:remote_port] ? @config[:remote_port].to_i : 80
-    path = File.join(@config[:remote_path].to_s, 'health_check.txt')
     begin
-      res = Net::HTTP.get_response(host, path, port)
-      if (res.code != "200")
-        return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - status #{res.code}",
+      res = fetch_remote('health_check.txt')
+      if (res.status.to_i != 200)
+        return [false,
+                "Could not fetch heath check file: #{res.env.url.to_s} - status #{res.status.to_i}",
                 nil]
       end
     rescue Exception => e
-      return [false, "Could not fetch heath check file: http://#{host}:#{port}#{path} - #{e.message}", e]
+      return [false, "Could not fetch heath check file - #{e.message}", e]
     end
     [true, nil, nil]
   end
