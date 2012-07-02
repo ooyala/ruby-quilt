@@ -236,7 +236,7 @@ class Quilt
       begin
         res = fetch_remote(filename)
         if (res.status.to_i != 200)
-          log_error("no version fetched : #{res.status.to_i}")
+          log_error("no version fetched : #{res.env[:url].to_s} - status #{res.status.to_i}")
           return nil
         end
         FileUtils.mkdir(version_dir) unless File.exists?(version_dir)
@@ -355,7 +355,7 @@ class Quilt
       res = fetch_remote('health_check.txt')
       if (res.status.to_i != 200)
         return [false,
-                "Could not fetch heath check file: #{res.env.url.to_s} - status #{res.status.to_i}",
+                "Could not fetch heath check file: #{res.env[:url].to_s} - status #{res.status.to_i}",
                 nil]
       end
     rescue Exception => e
