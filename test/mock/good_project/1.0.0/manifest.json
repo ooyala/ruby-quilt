@@ -2,7 +2,8 @@
   "header": "./h.js",
   "footer": "./f.js",
   "common": [
-    "./common/c.js"
+    "./common/c.js",
+    {"./common/c2.js" : "before_common"}
   ],
   "optional": {
     "./optional/0.js": [ "8.js" ],

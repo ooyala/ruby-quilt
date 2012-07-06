@@ -17,6 +17,8 @@ class Quilt
   DEBUG_PREFIX_KEY = "debug_prefix"
   ARCHIVE_SUFFIX = ".tgz"
   DEFAULT_LRU_SIZE = 10
+  VALID_POSITIONS = ['before_header', 'after_header', 'before_common', 'after_common', 'before_optional',
+                     'optional', 'after_optional', 'before_footer', 'after_footer']
 
   def initialize(config = "quilt", log = Logger.new(STDOUT))
     @@fetching_versions = {}
@@ -95,7 +97,8 @@ class Quilt
         :header => '',
         :common => '',
         :optional => {},
-        :footer => ''
+        :footer => '',
+        :base_modules => []
       }
     }
     begin
@@ -110,7 +113,8 @@ class Quilt
           :header => '',
           :common => '',
           :optional => {},
-          :footer => ''
+          :footer => '',
+          :base_modules => []
         }
       end
     rescue Exception => e
@@ -125,6 +129,7 @@ class Quilt
     #    "footer" : "<footer file>",
     #    "common" : [
     #      "<module file>",
+    #      { <module file> : "<position>" },
     #      ...
     #    ],
     #    "optional" : {
@@ -147,11 +152,28 @@ class Quilt
       end
       if manifest[COMMON_KEY] && manifest[COMMON_KEY].is_a?(Array)
         manifest[COMMON_KEY].each do |filename|
-          begin
-            new_version[prefix][:common] =
-              "#{new_version[prefix][:common]}#{File.open(File.join(dir, filename), "rb").read}"
-          rescue Exception => e
-            log_error("  Could not load #{prefix.to_s} common module: #{filename}", e)
+          if (filename.is_a?(String))
+            begin
+              new_version[prefix][:common] =
+                "#{new_version[prefix][:common]}#{File.open(File.join(dir, filename), "rb").read}"
+            rescue Exception => e
+              log_error("  Could not load #{prefix.to_s} common module: #{filename}", e)
+            end
+          elsif (filename.is_a?(Hash))
+            filename.each do |actual_name, position_str|
+              position = position_str && VALID_POSITIONS.include?(position_str) ?
+                           position_str.to_sym : :before_common
+              tmp_module_name = get_module_name(actual_name)
+              if (tmp_module_name)
+                tmp_module = get_module(actual_name, [], position, dir)
+                if (tmp_module)
+                  new_version[prefix][:optional][tmp_module_name] = tmp_module
+                  new_version[prefix][:base_modules].push(tmp_module_name)
+                end
+              else
+                log_error("  Could not extract #{prefix.to_s} module name from: #{filename}")
+              end
+            end
           end
         end
       end
@@ -163,7 +185,8 @@ class Quilt
             dependancies = value
           elsif (value.is_a?(Hash))
             dependancies = value[DEPENDANCIES_KEY] || []
-            position = value[POSITION_KEY] ? value[POSITION_KEY].to_sym : :optional
+            position = value[POSITION_KEY] && VALID_POSITIONS.include?(value[POSITION_KEY]) ?
+                         value[POSITION_KEY].to_sym : :optional
           end
           tmp_module_name = get_module_name(filename)
           if (tmp_module_name)
@@ -302,6 +325,12 @@ class Quilt
     elsif (selector.is_a?(Array))
       modules = selector
     end
+    base_modules = []
+    outversion[:base_modules].each do |mod|
+      next if modules.include?(mod)
+      base_modules.push(mod)
+    end
+    modules = base_modules.concat(modules)
 
     # resolve dependancies
     dynamics = dynamic_modules && dynamic_modules.is_a?(Hash) ? dynamic_modules : {}

@@ -191,6 +191,7 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\n", version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
+          "c2.js" => { :position => :before_common, :dependancies=> [], :module=>"c2\n" },
           "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
           "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
@@ -289,6 +290,7 @@ class QuiltTest < Scope::TestCase
         assert_equal "h\n", version[:default][:header]
         assert_equal "c\n", version[:default][:common]
         expected = {
+          "c2.js" => { :position => :before_common, :dependancies=> [], :module=>"c2\n" },
           "0.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "0\n" },
           "1.js" => { :position => :optional, :dependancies => [ "7.js", "9.js" ], :module => "1\n" },
           "2.js" => { :position => :optional, :dependancies => [ "8.js" ], :module => "2\n" },
@@ -349,15 +351,15 @@ class QuiltTest < Scope::TestCase
       end
 
       should "properly stitch for an existing version with selector array" do
-        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0')
+        assert_equal "h\nc2\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0')
       end
 
       should "properly stitch valid modules with selector array and invalid modules" do
-        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['invalid.js', '0.js'], '1.0.0')
+        assert_equal "h\nc2\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['invalid.js', '0.js'], '1.0.0')
       end
 
       should "properly stitch for an existing version with selector function" do
-        assert_equal "5\nh\n6\nc\n8\n0\n7\n9\n1\n2\n3\n4\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
+        assert_equal "5\nh\n6\nc2\nc\n8\n0\n7\n9\n1\n2\n3\n4\nf1.0.0\n", @no_remote_quilt.stitch(Proc.new do |m|
           true
         end, '1.0.0')
       end
@@ -380,11 +382,11 @@ class QuiltTest < Scope::TestCase
       end
 
       should "fallback to non-debug if debug does not exist" do
-        assert_equal "h\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug)
+        assert_equal "h\nc2\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug)
       end
 
       should "add dynamic module if it exists" do
-        assert_equal "[bh]h\n[ah][bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+        assert_equal "[bh]h\n[ah][bc]c2\nc\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
           @no_remote_quilt.stitch(['0.js'], '1.0.0', :debug, {
             :before_header => '[bh]',
             :after_header => '[ah]',
@@ -397,7 +399,7 @@ class QuiltTest < Scope::TestCase
         })
       end
       should "add modules to the correct position" do
-        assert_equal "[bh]5\nh\n6\n[bc]c\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
+        assert_equal "[bh]5\nh\n6\n[bc]c2\nc\n[ac][bo]8\n0\n[ao][bf]f1.0.0\n[af]",
           @no_remote_quilt.stitch(['0.js', '5.js'], '1.0.0', :debug, {
             :before_header => '[bh]',
             :after_header => [ '6.js' ],
