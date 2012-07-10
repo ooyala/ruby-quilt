@@ -25,6 +25,7 @@ class Quilt
     config_prefix = config ? "#{config}:" : ""
     @config = {
       :local_path => Ecology.property("#{config_prefix}local_path", :as => String),
+      :dev_path => Ecology.property("#{config_prefix}dev_path", :as => String),
       :remote_host => Ecology.property("#{config_prefix}remote_host", :as => String),
       :remote_path => Ecology.property("#{config_prefix}remote_path", :as => String),
       :remote_port => Ecology.property("#{config_prefix}remote_port", :as => String),
@@ -240,6 +241,9 @@ class Quilt
 
   def get_version(name)
     return @versions[name] if @versions[name]
+    if (name == 'dev' && @config[:dev_path])
+      return load_version(@config[:dev_path], '')
+    end
     # check local path
     # sleep at most 10 seconds to wait until a version is fetched and untared
     @@fetching_versions[name] ||= Mutex.new

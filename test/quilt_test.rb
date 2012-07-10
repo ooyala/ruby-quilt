@@ -411,6 +411,9 @@ class QuiltTest < Scope::TestCase
             :after_footer => '[af]'
         })
       end
+      should "properly stitch dev version" do
+        assert_equal "DEVh\nc2\nc\n8\n0\nf1.0.0\n", @quilt.stitch(['0.js'], 'dev')
+      end
     end
 
     context "health" do

@@ -1,6 +1,7 @@
 {
   "quilt": {
     "lru_size": 10,
-    "local_path": "./test/mock/good_project"
+    "local_path": "./test/mock/good_project",
+    "dev_path": "./test/mock/dev"
   }
 }

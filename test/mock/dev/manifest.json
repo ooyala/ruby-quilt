@@ -1,0 +1,20 @@
+{
+  "header": "./h.js",
+  "footer": "./f.js",
+  "common": [
+    "./common/c.js",
+    {"./common/c2.js" : "before_common"}
+  ],
+  "optional": {
+    "./optional/0.js": [ "8.js" ],
+    "./1.js": [ "7.js", "9.js" ],
+    "2.js": { "dependancies" : [ "8.js" ] },
+    "./3.js": [],
+    "./4.js": [],
+    "./5.js": { "dependancies" : [], "position" : "before_header"},
+    "./6.js": { "position" : "after_header"},
+    "./7.js": [],
+    "./8.js": [],
+    "./9.js": []
+  }
+}
