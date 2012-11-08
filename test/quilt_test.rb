@@ -350,6 +350,10 @@ class QuiltTest < Scope::TestCase
         assert_equal nil, @no_remote_quilt.stitch(['0.js'], '2.0.0')
       end
 
+      should "return nil for a non-existant remote version" do
+        assert_equal nil, @quilt.stitch(['0.js'], '3.0.0')
+      end
+
       should "properly stitch for an existing version with selector array" do
         assert_equal "h\nc2\nc\n8\n0\nf1.0.0\n", @no_remote_quilt.stitch(['0.js'], '1.0.0')
       end
