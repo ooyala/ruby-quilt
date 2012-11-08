@@ -346,8 +346,8 @@ class QuiltTest < Scope::TestCase
     end
 
     context "stitch" do
-      should "return empty for a non-existant version when no remote information exists" do
-        assert_equal '', @no_remote_quilt.stitch(['0.js'], '2.0.0')
+      should "return nil for a non-existant version when no remote information exists" do
+        assert_equal nil, @no_remote_quilt.stitch(['0.js'], '2.0.0')
       end
 
       should "properly stitch for an existing version with selector array" do

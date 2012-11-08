@@ -312,11 +312,11 @@ class Quilt
   end
 
   def stitch(selector, version_name, prefix = :default, dynamic_modules = nil)
-    return '' if !selector
+    return nil if !selector
     version = get_version(version_name)
     if (!version)
       log_error("could not fetch version: #{version_name}")
-      return ''
+      return nil
     end
     outversion = version[prefix] || version[:default]
 
